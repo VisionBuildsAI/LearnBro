@@ -1,0 +1,152 @@
+import { GoogleGenAI, Content, Part, Type, Schema } from "@google/genai";
+import { SYSTEM_INSTRUCTION, getModeInstruction } from "../constants";
+import { TeachingMode, ChatMessage } from "../types";
+
+const apiKey = process.env.API_KEY;
+
+if (!apiKey) {
+  console.error("API_KEY is missing from environment variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+
+export const sendMessageToLearnBro = async (
+  history: ChatMessage[],
+  currentMessage: string,
+  imageAttachment: string | null,
+  mode: TeachingMode,
+  onStream: (text: string) => void
+) => {
+  try {
+    // 1. Prepare history for the model
+    // We filter out the current pending message if it was optimistically added to UI state
+    // and map strictly to the Content format expected by the SDK
+    const historyContent: Content[] = history
+      .filter(msg => !msg.contentType || msg.contentType === 'text') // Only send text history
+      .map((msg) => {
+      const parts: Part[] = [{ text: msg.text }];
+      return {
+        role: msg.role,
+        parts: parts,
+      };
+    });
+
+    // 2. Add the dynamic mode instruction to the prompt
+    // We prepend the mode instruction to the user's message so the model adapts instantly.
+    const modePrompt = getModeInstruction(mode);
+    const finalPrompt = `[SYSTEM NOTE: ${modePrompt}]\n\n${currentMessage}`;
+
+    const parts: Part[] = [{ text: finalPrompt }];
+
+    // 3. Handle Image
+    if (imageAttachment) {
+      // Remove data url prefix if present (e.g. "data:image/jpeg;base64,")
+      const base64Data = imageAttachment.split(",")[1];
+      const mimeType = imageAttachment.split(";")[0].split(":")[1] || "image/jpeg";
+      
+      parts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Data,
+        },
+      });
+    }
+
+    // 4. Initialize Chat
+    // We use a fresh chat instance with history for each turn to allow dynamic system instruction updates if needed,
+    // though here we embed the mode in the message.
+    const chat = ai.chats.create({
+      model: "gemini-2.5-flash",
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        temperature: 0.7, // Creative but accurate
+      },
+      history: historyContent
+    });
+
+    // 5. Send Message Stream
+    const result = await chat.sendMessageStream({
+        config: {
+            systemInstruction: SYSTEM_INSTRUCTION, // Reinforce system instruction
+        },
+        message: {
+            role: 'user',
+            parts: parts
+        }
+    });
+
+    let fullText = "";
+    
+    for await (const chunk of result) {
+      const text = chunk.text;
+      if (text) {
+        fullText += text;
+        onStream(fullText);
+      }
+    }
+
+    return fullText;
+
+  } catch (error) {
+    console.error("Error in Gemini Service:", error);
+    throw error;
+  }
+};
+
+export const generateQuizOrFlashcards = async (
+  topic: string,
+  type: 'quiz' | 'flashcards'
+): Promise<any> => {
+    let schema: Schema;
+    let prompt: string;
+
+    if (type === 'quiz') {
+      prompt = `Generate a 5-question multiple choice quiz about "${topic}". The options should be an array of 4 strings. The answer should be the exact string of the correct option.`;
+      schema = {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            options: { 
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+            },
+            answer: { type: Type.STRING },
+          },
+          required: ["question", "options", "answer"],
+        },
+      };
+    } else {
+      prompt = `Generate 5 study flashcards for "${topic}". Front is the term/concept, Back is the definition/explanation.`;
+      schema = {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            front: { type: Type.STRING },
+            back: { type: Type.STRING },
+          },
+          required: ["front", "back"],
+        },
+      };
+    }
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+                temperature: 0.5
+            }
+        });
+
+        const text = response.text || "[]";
+        return JSON.parse(text);
+    } catch (error) {
+        console.error("Error generating study material:", error);
+        return [];
+    }
+}
