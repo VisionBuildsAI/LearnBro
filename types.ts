@@ -1,6 +1,6 @@
 export type Role = 'user' | 'model';
 
-export type ContentType = 'text' | 'quiz' | 'flashcards';
+export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice';
 
 export interface ChatMessage {
   id: string;

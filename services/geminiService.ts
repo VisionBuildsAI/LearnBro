@@ -1,4 +1,4 @@
-import { GoogleGenAI, Content, Part, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Content, Part, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION, getModeInstruction } from "../constants";
 import { TeachingMode, ChatMessage } from "../types";
 
@@ -69,10 +69,7 @@ export const sendMessageToLearnBro = async (
         config: {
             systemInstruction: SYSTEM_INSTRUCTION, // Reinforce system instruction
         },
-        message: {
-            role: 'user',
-            parts: parts
-        }
+        message: parts
     });
 
     let fullText = "";
@@ -93,11 +90,11 @@ export const sendMessageToLearnBro = async (
   }
 };
 
-export const generateQuizOrFlashcards = async (
+export const generateStudyMaterial = async (
   topic: string,
-  type: 'quiz' | 'flashcards'
+  type: 'quiz' | 'flashcards' | 'practice'
 ): Promise<any> => {
-    let schema: Schema;
+    let schema: any;
     let prompt: string;
 
     if (type === 'quiz') {
@@ -117,6 +114,20 @@ export const generateQuizOrFlashcards = async (
           required: ["question", "options", "answer"],
         },
       };
+    } else if (type === 'practice') {
+        prompt = `Generate 3 practice problems for "${topic}" ranging from easy to hard. Include a hint and a step-by-step solution for each.`;
+        schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    problem: { type: Type.STRING, description: "The problem statement" },
+                    hint: { type: Type.STRING, description: "A helpful hint without giving away the answer" },
+                    solution: { type: Type.STRING, description: "The detailed solution" }
+                },
+                required: ["problem", "hint", "solution"]
+            }
+        };
     } else {
       prompt = `Generate 5 study flashcards for "${topic}". Front is the term/concept, Back is the definition/explanation.`;
       schema = {
@@ -143,10 +154,56 @@ export const generateQuizOrFlashcards = async (
             }
         });
 
-        const text = response.text || "[]";
+        let text = response.text || "[]";
+        // Clean up markdown code blocks if the model includes them
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
         return JSON.parse(text);
     } catch (error) {
         console.error("Error generating study material:", error);
         return [];
     }
-}
+};
+
+export const generateDiagram = async (topic: string): Promise<{ image: string, text: string } | null> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [{ text: `Create a clean, educational diagram or illustration explaining: ${topic}. Use simple lines and clear colors suitable for a student learning the topic.` }]
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: "4:3"
+                }
+            }
+        });
+
+        let imageBase64 = null;
+        let text = "";
+
+        // Iterate parts to find image and text
+        const parts = response.candidates?.[0]?.content?.parts;
+        if (parts) {
+            for (const part of parts) {
+                if (part.inlineData) {
+                    imageBase64 = part.inlineData.data;
+                } else if (part.text) {
+                    text += part.text;
+                }
+            }
+        }
+
+        if (imageBase64) {
+            return {
+                image: `data:image/png;base64,${imageBase64}`,
+                text: text || `Here is a visual aid for ${topic}.`
+            };
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Error generating diagram:", error);
+        return null;
+    }
+};
