@@ -13,13 +13,12 @@ export interface ChatMessage {
 }
 
 export enum TeachingMode {
-  DEFAULT = "Friendly Best Friend (Default)",
+  DEFAULT = "Best Friend",
   ELI5 = "Explain Like I'm 5",
-  COMEDIAN = "Stand-up Comedian",
-  STRICT_MOM = "Strict Indian Mom",
-  LATE_NIGHT = "2AM Best Friend",
-  SENIOR = "Helpful Senior",
-  PIRATE = "Pirate Captain"
+  COMEDIAN = "Comedian",
+  STRICT_MOM = "Strict Mom",
+  SENIOR = "Senior Mentor",
+  LATE_NIGHT = "2AM Therapy Talks"
 }
 
 export interface Attachment {

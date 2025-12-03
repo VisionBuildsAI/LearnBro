@@ -6,11 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LearnBro AI</title>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --font-primary: 'Inter', sans-serif;
+        --font-display: 'Outfit', sans-serif;
+      }
+      
       body {
-        font-family: 'Outfit', sans-serif;
-        background-color: #f8fafc;
+        font-family: var(--font-primary);
+        /* Default light mode bg */
+        background-color: #f3f4f6;
+      }
+      
+      html.dark body {
+        background-color: #0f172a;
       }
 
       /* Custom scrollbar */
@@ -30,7 +40,18 @@
 
       @keyframes float {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
+        50% { transform: translateY(-6px); }
+      }
+
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
+        50% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.5); }
+      }
+
+      @keyframes aurora {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
       }
 
       .animate-slide-up {
@@ -38,11 +59,15 @@
       }
       
       .animate-fade-in {
-        animation: fadeIn 0.3s ease-out forwards;
+        animation: fadeIn 0.4s ease-out forwards;
       }
 
       .animate-float {
-        animation: float 3s ease-in-out infinite;
+        animation: float 4s ease-in-out infinite;
+      }
+
+      .animate-pulse-glow {
+        animation: pulse-glow 2s infinite;
       }
 
       /* Typing Indicator */
@@ -62,28 +87,45 @@
       .backface-hidden { backface-visibility: hidden; }
       .rotate-y-180 { transform: rotateY(180deg); }
 
-      /* Visual Effects */
+      /* Glassmorphism Utilities */
       .glass-panel {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+
+      html.dark .glass-panel {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       
       .glass-nav {
-         background: rgba(255, 255, 255, 0.85);
-         backdrop-filter: blur(10px);
-         border-right: 1px solid rgba(226, 232, 240, 0.6);
+         background: rgba(255, 255, 255, 0.7);
+         backdrop-filter: blur(20px);
+         border-right: 1px solid rgba(255, 255, 255, 0.4);
       }
 
-      .bg-grid-pattern {
-        background-color: #f8fafc;
-        background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-        background-size: 32px 32px;
+      html.dark .glass-nav {
+         background: rgba(15, 23, 42, 0.7);
+         border-right: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      /* Aurora Background */
+      .bg-aurora {
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background-size: 400% 400%;
+        animation: aurora 15s ease infinite;
+        opacity: 0.08;
       }
       
-      .shadow-glow {
-        box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.2);
+      html.dark .bg-aurora {
+        background: linear-gradient(-45deg, #4f46e5, #7c3aed, #2563eb, #0f172a);
+        opacity: 0.15;
+      }
+      
+      .text-display {
+        font-family: var(--font-display);
       }
     </style>
   <script type="importmap">
@@ -99,7 +141,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 overflow-hidden">
+  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-500">
     <div id="root"></div>
   </body>
 </html>
