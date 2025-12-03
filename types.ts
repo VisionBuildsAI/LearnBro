@@ -31,3 +31,12 @@ export interface QuickAction {
   prompt: string;
   icon: React.ReactNode;
 }
+
+export interface LearningEvent {
+  id: string;
+  topic: string;
+  timestamp: number;
+  type: 'quiz' | 'flashcards' | 'practice' | 'chat';
+  score?: number; // 0-100
+  mastery?: 'low' | 'medium' | 'high';
+}

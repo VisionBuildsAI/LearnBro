@@ -26,12 +26,15 @@ import {
   Clock,
   Music,
   Smile,
-  Frown
+  Frown,
+  History,
+  Activity
 } from 'lucide-react';
-import { TeachingMode, ChatMessage } from './types';
+import { TeachingMode, ChatMessage, LearningEvent } from './types';
 import { sendMessageToLearnBro, generateStudyMaterial, generateDiagram } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { QuizView, FlashcardView, PracticeProblemsView } from './components/StudyTools';
+import { TimelineView } from './components/TimelineView';
 
 // --- Configuration & Data ---
 
@@ -50,6 +53,15 @@ const PERSONAS = [
   { id: TeachingMode.STRICT_MOM, icon: <Frown size={20} />, color: "from-red-500 to-red-700", label: "Strict Mom", desc: "Tough Love" },
   { id: TeachingMode.SENIOR, icon: <GraduationCap size={20} />, color: "from-emerald-400 to-teal-500", label: "Senior Mentor", desc: "Wisdom & Hacks" },
   { id: TeachingMode.LATE_NIGHT, icon: <Moon size={20} />, color: "from-violet-600 to-purple-800", label: "2AM Therapy", desc: "Deep & Chill" },
+];
+
+const MOCK_HISTORY: LearningEvent[] = [
+  { id: '1', topic: 'Introduction to Python Functions', timestamp: Date.now() - 1000 * 60 * 60 * 2, type: 'chat', score: undefined },
+  { id: '2', topic: 'Calculus: Chain Rule', timestamp: Date.now() - 1000 * 60 * 60 * 24, type: 'quiz', score: 92 },
+  { id: '3', topic: 'The French Revolution Causes', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, type: 'flashcards', score: 100 },
+  { id: '4', topic: 'Newtonian Physics Basics', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, type: 'practice', score: 65 },
+  { id: '5', topic: 'React.js useEffect Hook', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 6, type: 'chat', score: undefined },
+  { id: '6', topic: 'Linear Algebra Matrices', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 10, type: 'quiz', score: 80 },
 ];
 
 // --- Components ---
@@ -111,9 +123,9 @@ const InputModal = ({ isOpen, onClose, title, placeholder, onConfirm }: { isOpen
 };
 
 const StreakCounter = () => (
-  <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100/50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-full">
+  <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100/50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-full group cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
     <Flame size={14} className="text-orange-500 animate-pulse" />
-    <span className="text-xs font-bold text-orange-700 dark:text-orange-400">12 Day Streak</span>
+    <span className="text-xs font-bold text-orange-700 dark:text-orange-400 group-hover:text-orange-800 dark:group-hover:text-orange-300">12 Day Streak</span>
   </div>
 );
 
@@ -139,6 +151,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<TeachingMode>(TeachingMode.DEFAULT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' ||
@@ -375,6 +388,14 @@ function App() {
           onConfirm={modalConfig.onConfirm}
       />
 
+      {/* Timeline Modal */}
+      {showTimeline && (
+        <TimelineView 
+          events={MOCK_HISTORY} 
+          onClose={() => setShowTimeline(false)} 
+        />
+      )}
+
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
@@ -410,7 +431,9 @@ function App() {
           
           {/* Stats & Actions */}
           <div className="flex items-center gap-3">
-             <StreakCounter />
+             <div onClick={() => setShowTimeline(true)}>
+                <StreakCounter />
+             </div>
              <MoodIndicator />
           </div>
 
@@ -470,6 +493,21 @@ function App() {
                 ))}
              </div>
           </div>
+
+          {/* Timeline Button (Explicit) */}
+           <button 
+             onClick={() => { setShowTimeline(true); setIsSidebarOpen(false); }}
+             className="w-full glass-panel p-3 rounded-2xl flex items-center gap-3 hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors group"
+           >
+              <div className="p-2 bg-gradient-to-br from-cyan-400 to-blue-500 text-white rounded-xl shadow-md group-hover:scale-110 transition-transform">
+                 <History size={18} />
+              </div>
+              <div className="text-left">
+                  <span className="text-sm font-bold block">Memory Timeline</span>
+                  <span className="text-[10px] opacity-60">View your journey</span>
+              </div>
+              <Activity size={16} className="ml-auto text-slate-400 group-hover:text-cyan-500" />
+           </button>
           
            {/* Pro Tip Card */}
            <div className="relative group overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-cyan-400 to-indigo-500">
