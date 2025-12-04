@@ -1,4 +1,4 @@
-import { GoogleGenAI, Content, Part, Type } from "@google/genai";
+import { GoogleGenAI, Content, Part, Type, FunctionDeclaration, Tool } from "@google/genai";
 import { SYSTEM_INSTRUCTION, getModeInstruction } from "../constants";
 import { TeachingMode, ChatMessage, NoteCorrectionData } from "../types";
 
@@ -10,56 +10,113 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
+// --- Tool Definitions ---
+
+const createQuizTool: FunctionDeclaration = {
+  name: "create_quiz",
+  description: "Generate a multiple choice quiz for the user to test their knowledge on a specific topic.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING, description: "The specific topic for the quiz." }
+    },
+    required: ["topic"]
+  }
+};
+
+const createFlashcardsTool: FunctionDeclaration = {
+  name: "create_flashcards",
+  description: "Create study flashcards for a specific topic.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING, description: "The topic for the flashcards." }
+    },
+    required: ["topic"]
+  }
+};
+
+const createPracticeTool: FunctionDeclaration = {
+  name: "create_practice_problems",
+  description: "Generate practice problems with hints and solutions.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING, description: "The topic for practice problems." }
+    },
+    required: ["topic"]
+  }
+};
+
+const createCheatSheetTool: FunctionDeclaration = {
+  name: "create_cheat_sheet",
+  description: "Generate a high-yield study cheat sheet or summary for a topic.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING, description: "The topic for the cheat sheet." }
+    },
+    required: ["topic"]
+  }
+};
+
+const generateDiagramTool: FunctionDeclaration = {
+  name: "generate_diagram",
+  description: "Generate a visual diagram or illustration to explain a concept.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      concept: { type: Type.STRING, description: "The concept to visualize." }
+    },
+    required: ["concept"]
+  }
+};
+
+const appTools: Tool[] = [{
+  functionDeclarations: [createQuizTool, createFlashcardsTool, createPracticeTool, createCheatSheetTool, generateDiagramTool]
+}];
+
+// --- Main Chat Function ---
+
 export const sendMessageToLearnBro = async (
   history: ChatMessage[],
   currentMessage: string,
   imageAttachment: string | null,
   mode: TeachingMode,
-  onStream: (text: string) => void
+  onStream: (text: string) => void,
+  onToolAction?: (type: string, data: any) => void
 ) => {
   try {
-    // 1. Prepare history for the model
-    // We filter out the current pending message if it was optimistically added to UI state
-    // and map strictly to the Content format expected by the SDK
+    // 1. Prepare history
     const historyContent: Content[] = history
-      .filter(msg => !msg.contentType || msg.contentType === 'text') // Only send text history
-      .map((msg) => {
-      const parts: Part[] = [{ text: msg.text }];
-      return {
+      .filter(msg => !msg.contentType || msg.contentType === 'text')
+      .map((msg) => ({
         role: msg.role,
-        parts: parts,
-      };
-    });
+        parts: [{ text: msg.text }],
+      }));
 
-    // 2. Add the dynamic mode instruction to the prompt
-    // We prepend the mode instruction to the user's message so the model adapts instantly.
+    // 2. Prepare Prompt & Image
     const modePrompt = getModeInstruction(mode);
     const finalPrompt = `[SYSTEM NOTE: ${modePrompt}]\n\n${currentMessage}`;
-
     const parts: Part[] = [{ text: finalPrompt }];
 
-    // 3. Handle Image
     if (imageAttachment) {
-      // Remove data url prefix if present (e.g. "data:image/jpeg;base64,")
       const base64Data = imageAttachment.split(",")[1];
       const mimeType = imageAttachment.split(";")[0].split(":")[1] || "image/jpeg";
-      
       parts.push({
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Data,
-        },
+        inlineData: { mimeType, data: base64Data },
       });
     }
 
-    // 4. Initialize Chat
+    // 3. Initialize Chat
     const isThinkingMode = mode === TeachingMode.DEEP_THINK;
-    
+    const modelName = isThinkingMode ? "gemini-3-pro-preview" : "gemini-2.5-flash";
+
     const chat = ai.chats.create({
-      model: isThinkingMode ? "gemini-3-pro-preview" : "gemini-2.5-flash",
+      model: modelName,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        // Apply thinking config only for DEEP_THINK mode
+        tools: appTools,
         ...(isThinkingMode 
             ? { thinkingConfig: { thinkingBudget: 32768 } } 
             : { temperature: 0.7 }
@@ -68,21 +125,48 @@ export const sendMessageToLearnBro = async (
       history: historyContent
     });
 
-    // 5. Send Message Stream
+    // 4. Send Message & Handle Stream
     const result = await chat.sendMessageStream({
-        config: {
-            systemInstruction: SYSTEM_INSTRUCTION, // Reinforce system instruction
-        },
         message: parts
     });
 
     let fullText = "";
     
     for await (const chunk of result) {
-      const text = chunk.text;
-      if (text) {
-        fullText += text;
+      // A. Handle Text
+      if (chunk.text) {
+        fullText += chunk.text;
         onStream(fullText);
+      }
+
+      // B. Handle Function Calls (Tools)
+      const functionCalls = chunk.functionCalls; 
+      if (functionCalls && functionCalls.length > 0) {
+         for (const call of functionCalls) {
+             console.log("Tool Triggered:", call.name, call.args);
+             
+             if (call.name === "create_quiz" && onToolAction) {
+                const topic = (call.args as any).topic;
+                const data = await generateStudyMaterial(topic, 'quiz');
+                onToolAction('quiz', data);
+             } else if (call.name === "create_flashcards" && onToolAction) {
+                const topic = (call.args as any).topic;
+                const data = await generateStudyMaterial(topic, 'flashcards');
+                onToolAction('flashcards', data);
+             } else if (call.name === "create_practice_problems" && onToolAction) {
+                const topic = (call.args as any).topic;
+                const data = await generateStudyMaterial(topic, 'practice');
+                onToolAction('practice', data);
+             } else if (call.name === "create_cheat_sheet" && onToolAction) {
+                const topic = (call.args as any).topic;
+                const data = await generateStudyMaterial(topic, 'cheatsheet');
+                onToolAction('cheatsheet', data);
+             } else if (call.name === "generate_diagram" && onToolAction) {
+                const concept = (call.args as any).concept;
+                const data = await generateDiagram(concept);
+                if (data) onToolAction('image', data.image);
+             }
+         }
       }
     }
 
@@ -94,9 +178,11 @@ export const sendMessageToLearnBro = async (
   }
 };
 
+// --- Helper Functions (Executors) ---
+
 export const generateStudyMaterial = async (
   topic: string,
-  type: 'quiz' | 'flashcards' | 'practice'
+  type: 'quiz' | 'flashcards' | 'practice' | 'cheatsheet'
 ): Promise<any> => {
     let schema: any;
     let prompt: string;
@@ -132,6 +218,31 @@ export const generateStudyMaterial = async (
                 required: ["problem", "hint", "solution"]
             }
         };
+    } else if (type === 'cheatsheet') {
+        prompt = `Generate a high-yield cheat sheet for "${topic}". Include a summary, key terms, important formulas or dates, and common pitfalls.`;
+        schema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                summary: { type: Type.STRING },
+                sections: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING, description: "Section title (e.g. 'Key Formulas')" },
+                            items: { 
+                                type: Type.ARRAY, 
+                                items: { type: Type.STRING },
+                                description: "List of key points or formulas"
+                            }
+                        },
+                        required: ["title", "items"]
+                    }
+                }
+            },
+            required: ["title", "summary", "sections"]
+        };
     } else {
       prompt = `Generate 5 study flashcards for "${topic}". Front is the term/concept, Back is the definition/explanation.`;
       schema = {
@@ -159,13 +270,11 @@ export const generateStudyMaterial = async (
         });
 
         let text = response.text || "[]";
-        // Clean up markdown code blocks if the model includes them
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
         return JSON.parse(text);
     } catch (error) {
         console.error("Error generating study material:", error);
-        return [];
+        return type === 'cheatsheet' ? {} : [];
     }
 };
 
@@ -186,7 +295,6 @@ export const generateDiagram = async (topic: string): Promise<{ image: string, t
         let imageBase64 = null;
         let text = "";
 
-        // Iterate parts to find image and text
         const parts = response.candidates?.[0]?.content?.parts;
         if (parts) {
             for (const part of parts) {
@@ -256,21 +364,19 @@ export const gradeAndFixNotes = async (text: string, imageBase64: string | null)
       required: ["title", "analysis", "correctedNotes", "diagramPrompt"]
     };
 
-    // Step 1: Analyze and correct text
     const textResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: { parts },
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 0.3 // Low temperature for factual accuracy
+        temperature: 0.3
       }
     });
 
     const jsonText = textResponse.text?.replace(/```json/g, '').replace(/```/g, '').trim() || "{}";
     const result = JSON.parse(jsonText);
 
-    // Step 2: Generate Diagram if prompted
     let diagramUrl = undefined;
     if (result.diagramPrompt) {
        const diagramRes = await generateDiagram(result.diagramPrompt);

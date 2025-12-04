@@ -2,26 +2,26 @@ import React from 'react';
 
 export type Role = 'user' | 'model';
 
-export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction';
+export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction' | 'cheatsheet';
 
 export interface ChatMessage {
   id: string;
   role: Role;
   text: string;
   contentType?: ContentType;
-  contentData?: any; // JSON data for quizzes or flashcards
+  contentData?: any; // JSON data for quizzes, flashcards, or cheatsheets
   image?: string; // Base64 string
   timestamp: number;
 }
 
 export enum TeachingMode {
-  DEFAULT = "Best Friend",
-  DEEP_THINK = "Deep Thinking",
-  ELI5 = "Explain Like I'm 5",
-  COMEDIAN = "Comedian",
+  DEFAULT = "Bro Mode",
+  CHILD = "Child Mode",
+  FUN = "Fun Mode",
   STRICT_MOM = "Strict Mom",
   SENIOR = "Senior Mentor",
-  LATE_NIGHT = "2AM Therapy Talks"
+  LATE_NIGHT = "2AM Therapy",
+  DEEP_THINK = "Deep Think"
 }
 
 export interface Attachment {
@@ -52,4 +52,11 @@ export interface NoteCorrectionData {
   }[];
   correctedNotes: string;
   diagramUrl?: string;
+}
+
+export interface MasteryItem {
+  id: string;
+  topic: string;
+  level: number; // 0-100
+  status: 'danger' | 'warning' | 'mastered';
 }

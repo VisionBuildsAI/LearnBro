@@ -17,12 +17,8 @@
       
       body {
         font-family: var(--font-primary);
-        /* Default light mode bg */
-        background-color: #f3f4f6;
-      }
-      
-      html.dark body {
-        background-color: #0f172a;
+        background-color: #0f172a; /* Midnight Blue Default */
+        color: #f8fafc;
       }
 
       /* Custom scrollbar */
@@ -55,6 +51,12 @@
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
       }
+      
+      @keyframes orb-breathe {
+        0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 30px currentColor; }
+        50% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 50px currentColor; }
+        100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 30px currentColor; }
+      }
 
       .animate-slide-up {
         animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -68,8 +70,8 @@
         animation: float 4s ease-in-out infinite;
       }
 
-      .animate-pulse-glow {
-        animation: pulse-glow 2s infinite;
+      .animate-orb {
+        animation: orb-breathe 4s ease-in-out infinite;
       }
 
       /* Typing Indicator */
@@ -91,43 +93,38 @@
 
       /* Glassmorphism Utilities */
       .glass-panel {
-        background: rgba(255, 255, 255, 0.65);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-      }
-
-      html.dark .glass-panel {
-        background: rgba(15, 23, 42, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       }
       
-      .glass-nav {
+      .glass-panel-light {
          background: rgba(255, 255, 255, 0.7);
-         backdrop-filter: blur(20px);
-         border-right: 1px solid rgba(255, 255, 255, 0.4);
-      }
-
-      html.dark .glass-nav {
-         background: rgba(15, 23, 42, 0.7);
-         border-right: 1px solid rgba(255, 255, 255, 0.05);
+         backdrop-filter: blur(24px);
+         border: 1px solid rgba(255, 255, 255, 0.4);
       }
 
       /* Aurora Background */
       .bg-aurora {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background: linear-gradient(-45deg, #0f172a, #1e1b4b, #172554, #020617);
         background-size: 400% 400%;
-        animation: aurora 15s ease infinite;
-        opacity: 0.08;
+        animation: aurora 20s ease infinite;
       }
-      
-      html.dark .bg-aurora {
-        background: linear-gradient(-45deg, #4f46e5, #7c3aed, #2563eb, #0f172a);
-        opacity: 0.15;
+
+      .bg-aurora-light {
+        background: linear-gradient(-45deg, #eff6ff, #f5f3ff, #e0f2fe, #f8fafc);
+        background-size: 400% 400%;
+        animation: aurora 20s ease infinite;
       }
       
       .text-display {
         font-family: var(--font-display);
+      }
+      
+      .neon-text {
+        text-shadow: 0 0 10px rgba(255,255,255,0.3);
       }
     </style>
   <script type="importmap">
@@ -143,7 +140,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-500">
+  <body class="bg-slate-950 text-slate-100 overflow-hidden selection:bg-cyan-500/30">
     <div id="root"></div>
   </body>
 </html>

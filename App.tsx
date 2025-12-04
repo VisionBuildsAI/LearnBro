@@ -1,236 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Send, 
-  Image as ImageIcon, 
-  Menu, 
-  X, 
-  Sparkles, 
-  BookOpen, 
-  BrainCircuit, 
-  GraduationCap, 
-  Zap,
-  Trash2,
-  MoreVertical,
-  Layers,
-  Palette,
-  PenTool,
-  CheckCircle2,
-  MessageSquare,
-  Moon,
-  Sun,
-  Rocket,
-  Mic,
-  Camera,
-  Heart,
-  Flame,
-  Clock,
-  Music,
-  Smile,
-  Frown,
-  History,
-  Activity,
-  Share2,
-  Headphones,
-  Network,
-  Highlighter,
-  FileText
+  Menu, X, Sparkles, BrainCircuit, Zap,
+  Settings, Image as ImageIcon, Rocket, Headphones, Mic, Share2, Search,
+  Smile, User, GraduationCap, Flame, Heart, AlertTriangle, Brain, History,
+  ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool
 } from 'lucide-react';
-import { TeachingMode, ChatMessage, LearningEvent } from './types';
-import { sendMessageToLearnBro, generateStudyMaterial, generateDiagram, gradeAndFixNotes } from './services/geminiService';
+import { TeachingMode, ChatMessage, MasteryItem, LearningEvent } from './types';
+import { sendMessageToLearnBro, gradeAndFixNotes } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
-import { QuizView, FlashcardView, PracticeProblemsView } from './components/StudyTools';
+import { QuizView, FlashcardView, PracticeProblemsView, CheatSheetView } from './components/StudyTools';
 import { TimelineView } from './components/TimelineView';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { NoteGraderView } from './components/NoteGrader';
+import { BrainDashboard } from './components/BrainDashboard';
+import { SmartChips } from './components/SmartChips';
 
 // --- Configuration & Data ---
 
-const SUGGESTIONS = [
-  "Explain Quantum Physics Like I’m 5",
-  "Solve This Math Problem",
-  "Make Me a Revision Plan",
-  "Build a Python Script",
-  "Help Me Start a Business"
-];
-
 const PERSONAS = [
-  { id: TeachingMode.DEFAULT, icon: <Smile size={20} />, color: "from-indigo-400 to-blue-500", label: "Best Friend", desc: "Friendly & Supportive" },
-  { id: TeachingMode.DEEP_THINK, icon: <Network size={20} />, color: "from-violet-500 to-fuchsia-600", label: "Deep Thinker", desc: "Complex Logic & Reasoning" },
-  { id: TeachingMode.ELI5, icon: <BookOpen size={20} />, color: "from-orange-400 to-amber-500", label: "Explain Like I'm 5", desc: "Simple & Cute" },
-  { id: TeachingMode.COMEDIAN, icon: <Sparkles size={20} />, color: "from-pink-500 to-rose-500", label: "Comedian", desc: "Roasts & Jokes" },
-  { id: TeachingMode.STRICT_MOM, icon: <Frown size={20} />, color: "from-red-500 to-red-700", label: "Strict Mom", desc: "Tough Love" },
-  { id: TeachingMode.SENIOR, icon: <GraduationCap size={20} />, color: "from-emerald-400 to-teal-500", label: "Senior Mentor", desc: "Wisdom & Hacks" },
-  { id: TeachingMode.LATE_NIGHT, icon: <Moon size={20} />, color: "from-violet-600 to-purple-800", label: "2AM Therapy", desc: "Deep & Chill" },
+  { id: TeachingMode.DEFAULT, icon: <User size={20} />, color: "text-cyan-400", bg: "bg-cyan-500", label: "Bro Mode", desc: "Best Friend" },
+  { id: TeachingMode.CHILD, icon: <Smile size={20} />, color: "text-amber-400", bg: "bg-amber-500", label: "Child Mode", desc: "ELI5" },
+  { id: TeachingMode.FUN, icon: <Sparkles size={20} />, color: "text-pink-400", bg: "bg-pink-500", label: "Fun Mode", desc: "Comedian" },
+  { id: TeachingMode.STRICT_MOM, icon: <AlertTriangle size={20} />, color: "text-rose-500", bg: "bg-rose-600", label: "Strict Mom", desc: "Discipline" },
+  { id: TeachingMode.SENIOR, icon: <GraduationCap size={20} />, color: "text-emerald-400", bg: "bg-emerald-500", label: "Senior", desc: "Mentor" },
+  { id: TeachingMode.LATE_NIGHT, icon: <Heart size={20} />, color: "text-violet-400", bg: "bg-violet-500", label: "Therapy", desc: "2AM Talks" },
+  { id: TeachingMode.DEEP_THINK, icon: <Brain size={20} />, color: "text-indigo-400", bg: "bg-indigo-500", label: "Deep Think", desc: "Reasoning" },
 ];
 
-const MOCK_HISTORY: LearningEvent[] = [
-  { id: '1', topic: 'Introduction to Python Functions', timestamp: Date.now() - 1000 * 60 * 60 * 2, type: 'chat', score: undefined },
-  { id: '2', topic: 'Calculus: Chain Rule', timestamp: Date.now() - 1000 * 60 * 60 * 24, type: 'quiz', score: 92 },
-  { id: '3', topic: 'The French Revolution Causes', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, type: 'flashcards', score: 100 },
-  { id: '4', topic: 'Newtonian Physics Basics', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, type: 'practice', score: 65 },
-  { id: '5', topic: 'React.js useEffect Hook', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 6, type: 'chat', score: undefined },
-  { id: '6', topic: 'Linear Algebra Matrices', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 10, type: 'quiz', score: 80 },
+const TOOLS = [
+  { id: 'timeline', label: 'Timeline', icon: <History size={18} />, desc: 'History', action: 'timeline', color: 'text-slate-400 group-hover:text-indigo-400', bg: 'group-hover:bg-indigo-500/20' },
+  { id: 'quiz', label: 'Create Quiz', icon: <HelpCircle size={18} />, desc: 'Test Prep', prompt: "Create a multiple choice quiz about ", color: 'text-slate-400 group-hover:text-emerald-400', bg: 'group-hover:bg-emerald-500/20' },
+  { id: 'flashcards', label: 'Flashcards', icon: <RotateCw size={18} />, desc: 'Memorize', prompt: "Create flashcards for ", color: 'text-slate-400 group-hover:text-amber-400', bg: 'group-hover:bg-amber-500/20' },
+  { id: 'notes', label: 'Cheat Sheet', icon: <FileText size={18} />, desc: 'Summaries', prompt: "Create a cheat sheet for ", color: 'text-slate-400 group-hover:text-purple-400', bg: 'group-hover:bg-purple-500/20' },
+  { id: 'diagram', label: 'Diagrams', icon: <ImageIcon size={18} />, desc: 'Visuals', prompt: "Generate a diagram explaining ", color: 'text-slate-400 group-hover:text-cyan-400', bg: 'group-hover:bg-cyan-500/20' },
+  { id: 'grader', label: 'Check Notes', icon: <Highlighter size={18} />, desc: 'Grader', prompt: "Grade these notes: ", color: 'text-slate-400 group-hover:text-rose-400', bg: 'group-hover:bg-rose-500/20' },
 ];
 
-// --- Components ---
+const MOCK_MASTERY: MasteryItem[] = [
+  { id: '1', topic: 'Physics', level: 68, status: 'warning' },
+  { id: '2', topic: 'Calculus', level: 92, status: 'mastered' },
+  { id: '3', topic: 'Chemistry', level: 45, status: 'danger' },
+  { id: '4', topic: 'History', level: 88, status: 'mastered' },
+  { id: '5', topic: 'Literature', level: 75, status: 'warning' },
+];
 
-const InputModal = ({ isOpen, onClose, title, placeholder, onConfirm }: { isOpen: boolean; onClose: () => void; title: string; placeholder: string; onConfirm: (val: string) => void }) => {
-  const [value, setValue] = useState("");
-
-  useEffect(() => {
-      if(isOpen) setValue("");
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="glass-panel rounded-3xl w-full max-w-md p-8 shadow-2xl scale-100 animate-slide-up relative overflow-hidden dark:text-white">
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
-        
-        <h3 className="text-2xl font-bold mb-2 relative z-10 font-display">{title}</h3>
-        <p className="text-sm opacity-70 mb-6 relative z-10">What topic should we focus on today?</p>
-        
-        <input
-          autoFocus
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-             if(e.key === 'Enter' && value.trim()) {
-                 onConfirm(value);
-                 onClose();
-             }
-          }}
-          placeholder={placeholder}
-          className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-4 mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-lg relative z-10"
-        />
-        <div className="flex justify-end gap-3 relative z-10">
-          <button 
-            onClick={onClose}
-            className="px-5 py-2.5 opacity-70 hover:opacity-100 font-medium transition-opacity"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => {
-                if (value.trim()) {
-                    onConfirm(value);
-                    onClose();
-                }
-            }}
-            disabled={!value.trim()}
-            className="px-7 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
-          >
-            Generate
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const NoteUploadModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: (text: string, image: string | null) => void }) => {
-  const [text, setText] = useState("");
-  const [image, setImage] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if(isOpen) {
-        setText("");
-        setImage(null);
-    }
-  }, [isOpen]);
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-       <div className="glass-panel rounded-3xl w-full max-w-lg p-8 shadow-2xl animate-slide-up relative dark:text-white">
-         <div className="absolute -top-20 -left-20 w-40 h-40 bg-rose-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
-
-         <div className="flex items-center gap-3 mb-4 relative z-10">
-            <div className="p-3 bg-rose-100 text-rose-600 rounded-xl">
-               <Highlighter size={24} />
-            </div>
-            <div>
-               <h3 className="text-2xl font-bold font-display">Grade & Fix Notes</h3>
-               <p className="text-sm opacity-70">Upload your notes to find errors.</p>
-            </div>
-         </div>
-
-         {/* Image Upload Area */}
-         <div 
-           onClick={() => fileRef.current?.click()}
-           className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 mb-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative group"
-         >
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-            {image ? (
-                <div className="relative">
-                   <img src={image} alt="Preview" className="max-h-48 mx-auto rounded-lg shadow-sm" />
-                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                      <span className="text-white font-medium flex items-center gap-2"><Camera size={16}/> Change Image</span>
-                   </div>
-                </div>
-            ) : (
-                <div className="py-6 text-slate-400">
-                    <Camera size={32} className="mx-auto mb-2 opacity-50" />
-                    <p className="text-sm font-medium">Click to upload photo of notes</p>
-                </div>
-            )}
-         </div>
-
-         {/* Text Input */}
-         <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Or paste your text notes here..."
-            className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all text-sm min-h-[100px] resize-none"
-         />
-
-         <div className="flex justify-end gap-3 relative z-10">
-           <button onClick={onClose} className="px-5 py-2.5 opacity-70 hover:opacity-100 font-medium transition-opacity">Cancel</button>
-           <button 
-             onClick={() => {
-                 if(text.trim() || image) {
-                     onConfirm(text, image);
-                     onClose();
-                 }
-             }}
-             disabled={!text.trim() && !image}
-             className="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-rose-500/25 hover:scale-105 transition-all disabled:opacity-50"
-           >
-             Analyze Notes
-           </button>
-         </div>
-
-       </div>
-     </div>
-  );
-};
-
-const StreakCounter = () => (
-  <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100/50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-full group cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
-    <Flame size={14} className="text-orange-500 animate-pulse" />
-    <span className="text-xs font-bold text-orange-700 dark:text-orange-400 group-hover:text-orange-800 dark:group-hover:text-orange-300">12 Day Streak</span>
-  </div>
-);
-
-const MoodIndicator = () => (
-  <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100/50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-full">
-    <BrainCircuit size={14} className="text-indigo-500" />
-    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400">Focus: High</span>
-  </div>
-);
+const MOCK_EVENTS: LearningEvent[] = [
+    { id: '1', topic: 'Quantum Mechanics', timestamp: Date.now() - 100000000, type: 'quiz', score: 85 },
+    { id: '2', topic: 'French Revolution', timestamp: Date.now() - 200000000, type: 'flashcards' },
+    { id: '3', topic: 'Calculus Derivatives', timestamp: Date.now() - 50000000, type: 'practice', score: 100 },
+];
 
 function App() {
   // State
@@ -238,7 +56,7 @@ function App() {
     {
       id: 'welcome',
       role: 'model',
-      text: "Yo! I'm LearnBro. What are we crushing today? Math, Code, Life, or Money? 🚀",
+      text: "Yo. I'm LearnBro. What are we conquering today — grades, skills, or life?",
       timestamp: Date.now()
     }
   ]);
@@ -246,30 +64,15 @@ function App() {
   const [inputImage, setInputImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<TeachingMode>(TeachingMode.DEFAULT);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' ||
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-    return true; // Default to dark mode for that premium feel
-  });
+  const [showTimeline, setShowTimeline] = useState(false);
 
-  // Modal State
-  const [modalConfig, setModalConfig] = useState({
-      isOpen: false,
-      title: "",
-      placeholder: "",
-      onConfirm: (val: string) => {}
-  });
-
-  const [noteUploadOpen, setNoteUploadOpen] = useState(false);
-  
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Effects
   useEffect(() => {
@@ -277,14 +80,8 @@ function App() {
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (darkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
+  }, []);
 
   // Handlers
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,188 +95,41 @@ function App() {
     }
   };
 
-  const clearChat = () => {
-    setMessages([{
-      id: 'welcome-reset',
-      role: 'model',
-      text: "Chat cleared! Fresh start. What's next, boss?",
-      timestamp: Date.now()
-    }]);
-    setIsSidebarOpen(false);
-  };
-
-  const handleGenerateStudyTool = (type: 'quiz' | 'flashcards' | 'practice') => {
-    setIsSidebarOpen(false);
-    setModalConfig({
-        isOpen: true,
-        title: `Generate ${type === 'quiz' ? 'Quiz' : type === 'flashcards' ? 'Flashcards' : 'Practice Problems'}`,
-        placeholder: "Enter a topic (e.g. World War II, Calculus)...",
-        onConfirm: (topic) => executeStudyToolGeneration(topic, type)
-    });
-  };
-
-  const executeStudyToolGeneration = async (topic: string, type: 'quiz' | 'flashcards' | 'practice') => {
-    setIsLoading(true);
-
-    const userMsgId = Date.now().toString();
-    const typeLabel = type === 'quiz' ? 'quiz' : type === 'flashcards' ? 'flashcards' : 'practice problems';
-    
-    setMessages(prev => [...prev, {
-        id: userMsgId,
-        role: 'user',
-        text: `Generate ${typeLabel} for: ${topic}`,
-        timestamp: Date.now()
-    }]);
-
-    try {
-        const data = await generateStudyMaterial(topic, type);
-        
-        let responseText = "";
-        if (type === 'quiz') responseText = `Here is a quick quiz on ${topic}. Good luck!`;
-        else if (type === 'flashcards') responseText = `Here are your flashcards for ${topic}. Study up!`;
-        else responseText = `Here are some practice problems for ${topic}. Let's solve 'em!`;
-
-        setMessages(prev => [...prev, {
-            id: (Date.now() + 1).toString(),
-            role: 'model',
-            text: responseText,
-            contentType: type,
-            contentData: data,
-            timestamp: Date.now()
-        }]);
-    } catch (e) {
-        setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'model',
-            text: "Sorry bro, couldn't generate that right now. Try again?",
-            timestamp: Date.now()
-        }]);
-    } finally {
-        setIsLoading(false);
+  const handleSmartChip = (prompt: string) => {
+    // If scanning homework, prompt user for image first
+    if (prompt.includes("upload an image")) {
+        fileInputRef.current?.click();
+        // We'll set the text but wait for user to attach image
+        setInputText(prompt);
+    } else {
+        handleSendMessage(prompt);
     }
   };
 
-  const handleGenerateDiagram = () => {
-    setIsSidebarOpen(false);
-    setModalConfig({
-        isOpen: true,
-        title: "Generate Diagram",
-        placeholder: "What diagram do you need? (e.g. Photosynthesis)...",
-        onConfirm: (topic) => executeDiagramGeneration(topic)
-    });
-  };
-
-  const executeDiagramGeneration = async (topic: string) => {
-    setIsLoading(true);
-
-    const userMsgId = Date.now().toString();
-    setMessages(prev => [...prev, {
-        id: userMsgId,
-        role: 'user',
-        text: `Generate a diagram for: ${topic}`,
-        timestamp: Date.now()
-    }]);
-
-    try {
-        const result = await generateDiagram(topic);
-        
-        if (result && result.image) {
-            setMessages(prev => [...prev, {
-                id: (Date.now() + 1).toString(),
-                role: 'model',
-                text: result.text,
-                contentType: 'image',
-                image: result.image,
-                timestamp: Date.now()
-            }]);
-        } else {
-            throw new Error("No image generated");
-        }
-    } catch (e) {
-        setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'model',
-            text: "My bad, I couldn't draw that right now. Maybe try a simpler topic?",
-            timestamp: Date.now()
-        }]);
-    } finally {
-        setIsLoading(false);
-    }
-  };
-  
-  const handleNoteGrading = async (text: string, image: string | null) => {
-      setIsLoading(true);
-      const userMsgId = Date.now().toString();
-      
-      setMessages(prev => [...prev, {
-          id: userMsgId,
-          role: 'user',
-          text: "Grade these notes please.",
-          image: image || undefined,
-          timestamp: Date.now()
-      }]);
-
-      try {
-          const result = await gradeAndFixNotes(text, image);
+  const handleToolClick = (tool: typeof TOOLS[0]) => {
+      if (tool.action === 'timeline') {
+          setShowTimeline(true);
+      } else if (tool.prompt) {
+          setInputText(tool.prompt);
+          // Small timeout to allow render then focus
+          setTimeout(() => {
+              textareaRef.current?.focus();
+          }, 50);
           
-          if (result) {
-              setMessages(prev => [...prev, {
-                  id: (Date.now() + 1).toString(),
-                  role: 'model',
-                  text: "I've analyzed your notes. Here is the graded version with corrections and a visual aid.",
-                  contentType: 'note-correction',
-                  contentData: result,
-                  timestamp: Date.now()
-              }]);
-          } else {
-              throw new Error("Analysis failed");
+          if (window.innerWidth < 768) {
+              setIsSidebarOpen(false); // Close sidebar on mobile on selection
           }
-
-      } catch (e) {
-         setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'model',
-            text: "Could not grade the notes right now. Try clearer text or image.",
-            timestamp: Date.now()
-        }]);
-      } finally {
-          setIsLoading(false);
       }
   };
 
-  const handleShareImage = async (base64Data: string) => {
-    try {
-        const res = await fetch(base64Data);
-        const blob = await res.blob();
-        const file = new File([blob], "learnbro-visual.png", { type: "image/png" });
-
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-             await navigator.share({
-                files: [file],
-                title: 'LearnBro Visual',
-                text: 'Check out this visual from LearnBro!'
-            });
-        } else {
-             // Fallback: Download
-             const link = document.createElement('a');
-             link.href = base64Data;
-             link.download = 'learnbro-visual.png';
-             document.body.appendChild(link);
-             link.click();
-             document.body.removeChild(link);
-        }
-    } catch (e) {
-        console.error("Sharing failed", e);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if ((!inputText.trim() && !inputImage) || isLoading) return;
+  const handleSendMessage = async (textOverride?: string) => {
+    const textToSend = textOverride || inputText;
+    if ((!textToSend.trim() && !inputImage) || isLoading) return;
 
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      text: inputText,
+      text: textToSend,
       image: inputImage || undefined,
       contentType: 'text',
       timestamp: Date.now()
@@ -493,6 +143,7 @@ function App() {
 
     try {
       const responseId = (Date.now() + 1).toString();
+      // Optimistically add empty model message
       setMessages(prev => [
         ...prev,
         {
@@ -513,20 +164,24 @@ function App() {
           setMessages(prev => prev.map(msg => 
             msg.id === responseId ? { ...msg, text: streamedText } : msg
           ));
+        },
+        (toolType, toolData) => {
+            // Handle Tool Result (Quiz, Flashcards, etc.)
+            // We append a NEW message for the tool component
+            const toolMsgId = (Date.now() + 2).toString();
+            setMessages(prev => [...prev, {
+                id: toolMsgId,
+                role: 'model',
+                text: '',
+                contentType: toolType as any,
+                contentData: toolData,
+                timestamp: Date.now()
+            }]);
         }
       );
 
     } catch (error) {
       console.error("Failed to send message", error);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'model',
-          text: "My bad, something glitched out. Check your connection or the API key? 😵",
-          timestamp: Date.now()
-        }
-      ]);
     } finally {
       setIsLoading(false);
     }
@@ -539,383 +194,333 @@ function App() {
     }
   };
 
+  const getOrbColor = () => {
+      const persona = PERSONAS.find(p => p.id === currentMode);
+      return persona ? `${persona.color} shadow-${persona.color.split('-')[1]}-500` : 'text-cyan-400 shadow-cyan-500';
+  };
+
+  // Get current persona details
+  const activePersona = PERSONAS.find(p => p.id === currentMode) || PERSONAS[0];
+
   return (
-    <div className={`flex h-screen overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-500`}>
-      {/* Background with Aurora Effect */}
-      <div className="absolute inset-0 z-0 bg-aurora"></div>
+    <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30">
       
-      {/* Live Voice Modal */}
-      {isLiveMode && (
-        <LiveVoiceModal onClose={() => setIsLiveMode(false)} />
-      )}
+      {/* Background Aurora */}
+      <div className="absolute inset-0 z-0 bg-aurora opacity-40 pointer-events-none"></div>
 
-      {/* Input Modal */}
-      <InputModal 
-          isOpen={modalConfig.isOpen}
-          onClose={() => setModalConfig(prev => ({...prev, isOpen: false}))}
-          title={modalConfig.title}
-          placeholder={modalConfig.placeholder}
-          onConfirm={modalConfig.onConfirm}
-      />
-      
-      {/* Note Grader Modal */}
-      <NoteUploadModal 
-         isOpen={noteUploadOpen}
-         onClose={() => setNoteUploadOpen(false)}
-         onConfirm={handleNoteGrading}
-      />
-
-      {/* Timeline Modal */}
-      {showTimeline && (
-        <TimelineView 
-          events={MOCK_HISTORY} 
-          onClose={() => setShowTimeline(false)} 
-        />
-      )}
-
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 md:hidden animate-fade-in"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* --- Floating Sidebar --- */}
+      {/* --- LEFT SIDEBAR (Expanded) --- */}
       <aside className={`
-        fixed inset-y-4 left-4 z-40 w-80 glass-nav rounded-3xl transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl
-        md:relative md:translate-x-0 md:inset-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none md:border-r-0 md:flex
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        fixed inset-y-0 left-0 z-40 h-full glass-panel border-r border-white/5 flex flex-col transition-all duration-300
+        ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:w-20 md:translate-x-0'}
       `}>
-        {/* Logo Area */}
-        <div className="p-6 md:p-8 flex items-center justify-between">
-           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-               <BrainCircuit size={24} />
-             </div>
-             <div>
-               <h1 className="font-display font-bold text-xl tracking-tight">LearnBro</h1>
-               <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">AI Tutor</p>
-             </div>
-           </div>
-           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <X size={20} />
-           </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 space-y-8 scrollbar-hide pb-6">
-          
-          {/* Stats & Actions */}
-          <div className="flex items-center gap-3">
-             <div onClick={() => setShowTimeline(true)}>
-                <StreakCounter />
-             </div>
-             <MoodIndicator />
-          </div>
-
-          {/* Persona Selector */}
-          <div>
-            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-2">Personas</h3>
-            <div className="space-y-2">
-              {PERSONAS.map((persona) => (
-                <button
-                  key={persona.id}
-                  onClick={() => { setCurrentMode(persona.id); setIsSidebarOpen(false); }}
-                  className={`
-                    w-full flex items-center gap-3 p-3 rounded-2xl transition-all duration-300 border group relative overflow-hidden
-                    ${currentMode === persona.id 
-                      ? 'bg-white/80 dark:bg-slate-800/80 border-indigo-500/30 shadow-lg shadow-indigo-500/10' 
-                      : 'border-transparent hover:bg-white/40 dark:hover:bg-slate-800/40'}
-                  `}
-                >
-                  <div className={`
-                    w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br shadow-md transition-transform group-hover:scale-110
-                    ${persona.color}
-                  `}>
-                    {persona.icon}
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className={`font-semibold text-sm ${currentMode === persona.id ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                      {persona.label}
-                    </p>
-                    <p className="text-[10px] opacity-60 font-medium">{persona.desc}</p>
-                  </div>
-                  {currentMode === persona.id && (
-                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tools Grid */}
-          <div>
-             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-2">Quick Tools</h3>
-             <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'quiz', icon: <BrainCircuit size={18} />, label: "Quiz", color: "text-blue-500" },
-                  { id: 'flashcards', icon: <Layers size={18} />, label: "Cards", color: "text-purple-500" },
-                  { id: 'practice', icon: <PenTool size={18} />, label: "Practice", color: "text-emerald-500" },
-                  { id: 'diagram', icon: <Palette size={18} />, label: "Diagram", color: "text-pink-500" },
-                ].map((tool) => (
-                   <button 
-                     key={tool.id}
-                     onClick={tool.id === 'diagram' ? handleGenerateDiagram : () => handleGenerateStudyTool(tool.id as any)}
-                     className="glass-panel p-3 rounded-2xl flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform duration-200 border-transparent hover:border-white/40"
-                   >
-                      <div className={`p-2 bg-slate-100 dark:bg-slate-800 rounded-full ${tool.color}`}>{tool.icon}</div>
-                      <span className="text-xs font-semibold opacity-80">{tool.label}</span>
-                   </button>
-                ))}
-             </div>
-             
-             {/* Note Grader Button */}
-             <button 
-                onClick={() => { setNoteUploadOpen(true); setIsSidebarOpen(false); }}
-                className="mt-2 w-full glass-panel p-3 rounded-2xl flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors group border-transparent hover:border-rose-200"
-             >
-                <div className="p-2 bg-rose-500 text-white rounded-xl shadow-md group-hover:scale-110 transition-transform">
-                    <Highlighter size={18} />
-                </div>
-                <div className="text-left">
-                    <span className="text-sm font-bold block">Grade Notes</span>
-                    <span className="text-[10px] opacity-60">Upload & Fix Errors</span>
-                </div>
-             </button>
-          </div>
-
-          {/* Timeline Button (Explicit) */}
-           <button 
-             onClick={() => { setShowTimeline(true); setIsSidebarOpen(false); }}
-             className="w-full glass-panel p-3 rounded-2xl flex items-center gap-3 hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors group"
-           >
-              <div className="p-2 bg-gradient-to-br from-cyan-400 to-blue-500 text-white rounded-xl shadow-md group-hover:scale-110 transition-transform">
-                 <History size={18} />
-              </div>
-              <div className="text-left">
-                  <span className="text-sm font-bold block">Memory Timeline</span>
-                  <span className="text-[10px] opacity-60">View your journey</span>
-              </div>
-              <Activity size={16} className="ml-auto text-slate-400 group-hover:text-cyan-500" />
-           </button>
-          
-           {/* Pro Tip Card */}
-           <div className="relative group overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-cyan-400 to-indigo-500">
-              <div className="bg-white dark:bg-slate-900 rounded-[14px] p-4 h-full relative z-10">
-                 <div className="flex items-center gap-2 mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-indigo-500 font-bold text-xs uppercase tracking-wider">
-                   <Zap size={14} className="text-cyan-500" /> Pro Tip
-                 </div>
-                 <p className="text-xs font-medium opacity-80 leading-relaxed">
-                    Use the new "Grade Notes" tool to analyze your homework!
-                 </p>
-              </div>
-              <div className="absolute inset-0 bg-white/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-           </div>
-
-           <button 
-                onClick={clearChat}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-xs font-bold uppercase tracking-wider"
-              >
-                <Trash2 size={14} /> Clear History
-            </button>
-        </div>
-      </aside>
-
-      {/* --- Main Chat Area --- */}
-      <main className="flex-1 flex flex-col h-full relative z-10">
-        
-        {/* Mobile Header */}
-        <header className="md:hidden p-4 flex items-center justify-between glass-panel mx-4 mt-4 rounded-2xl z-20">
-           <div className="flex items-center gap-2">
-             <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-xl active:bg-slate-200 dark:active:bg-slate-700">
-               <Menu size={20} />
-             </button>
-             <span className="font-display font-bold">LearnBro</span>
-           </div>
-           <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-           </button>
-        </header>
-
-        {/* Desktop Theme Toggle (Floating) */}
-        <div className="hidden md:block absolute top-6 right-8 z-20">
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-3 rounded-full glass-panel shadow-lg hover:scale-110 transition-transform text-slate-600 dark:text-slate-300"
-            >
-               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-        </div>
-
-        {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-16 scrollbar-hide pb-40">
-           <div className="max-w-4xl mx-auto space-y-8">
-              {messages.map((msg, index) => (
-                <div 
-                  key={msg.id} 
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  {msg.role === 'model' && (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 p-0.5 mr-4 flex-shrink-0 self-start shadow-glow">
-                      <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center">
+         {/* Sidebar Header */}
+         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
+             {isSidebarOpen ? (
+                 <div className="flex items-center gap-3 animate-fade-in">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                         <BrainCircuit size={18} className="text-white" />
-                      </div>
                     </div>
-                  )}
-
-                  <div className={`
-                    max-w-[85%] md:max-w-[75%] rounded-3xl p-6 shadow-sm relative overflow-hidden group
-                    ${msg.role === 'user' 
-                      ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded-br-md shadow-indigo-500/20' 
-                      : 'glass-panel text-slate-800 dark:text-slate-100 rounded-bl-md'}
-                  `}>
-                    {msg.image && (
-                      <div className="relative mb-4 group/image">
-                          <img src={msg.image} alt="Upload" className="rounded-xl max-h-64 w-full object-contain bg-black/10 dark:bg-black/30 border border-white/10" />
-                          <button 
-                            onClick={() => handleShareImage(msg.image!)}
-                            className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md opacity-0 group-hover/image:opacity-100 transition-all duration-200 shadow-lg hover:scale-110"
-                            title="Share Image"
-                          >
-                            <Share2 size={16} />
-                          </button>
-                      </div>
-                    )}
-
-                    <div className="relative z-10">
-                        {msg.contentType === 'quiz' && msg.contentData ? (
-                            <QuizView data={msg.contentData} />
-                        ) : msg.contentType === 'flashcards' && msg.contentData ? (
-                            <FlashcardView data={msg.contentData} />
-                        ) : msg.contentType === 'practice' && msg.contentData ? (
-                            <PracticeProblemsView data={msg.contentData} />
-                        ) : msg.contentType === 'note-correction' && msg.contentData ? (
-                            <NoteGraderView data={msg.contentData} />
-                        ) : msg.role === 'user' ? (
-                          <p className="text-[15px] md:text-[16px] leading-relaxed font-medium">{msg.text}</p>
-                        ) : (
-                          <MarkdownRenderer content={msg.text} />
-                        )}
-                    </div>
-
-                    {/* Subtle shine effect for user messages */}
-                    {msg.role === 'user' && (
-                       <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white opacity-10 blur-3xl rounded-full pointer-events-none"></div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {isLoading && (
-                 <div className="flex items-center gap-3 pl-14 animate-fade-in">
-                    <div className="flex gap-1.5 p-4 rounded-2xl glass-panel">
-                       <div className="w-2 h-2 bg-indigo-500 rounded-full typing-dot"></div>
-                       <div className="w-2 h-2 bg-indigo-500 rounded-full typing-dot"></div>
-                       <div className="w-2 h-2 bg-indigo-500 rounded-full typing-dot"></div>
-                    </div>
+                    <span className="font-display font-bold text-xl tracking-tight">LearnBro</span>
                  </div>
-              )}
-              <div ref={messagesEndRef} />
-           </div>
-        </div>
-
-        {/* --- Floating Input Area --- */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 z-20 pointer-events-none">
-           <div className="max-w-3xl mx-auto pointer-events-auto">
-              
-              {/* Suggestion Chips */}
-              {messages.length < 3 && (
-                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide justify-center mask-fade-sides">
-                  {SUGGESTIONS.map((s, i) => (
-                    <button
-                      key={s}
-                      onClick={() => setInputText(s)}
-                      className="whitespace-nowrap px-4 py-2 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/40 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105 transition-all shadow-sm flex items-center gap-2 animate-slide-up"
-                      style={{ animationDelay: `${i * 0.1}s` }}
-                    >
-                      <Sparkles size={12} className="text-indigo-400"/>
-                      {s}
-                    </button>
-                  ))}
+             ) : (
+                <div className="w-full flex justify-center">
+                    <BrainCircuit size={24} className="text-cyan-400" />
                 </div>
-              )}
+             )}
+             
+             {/* Toggle Button */}
+             <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="hidden md:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+             >
+                 <ChevronLeft size={16} className={`transition-transform duration-300 ${!isSidebarOpen && 'rotate-180'}`} />
+             </button>
+         </div>
 
-              {/* Input Capsule */}
-              <div className="relative group">
-                 {/* Input Glow */}
-                 <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full opacity-0 group-focus-within:opacity-20 blur-lg transition-opacity duration-500"></div>
-                 
-                 <div className="relative flex items-end gap-2 glass-panel rounded-[2rem] p-2 pl-5 transition-all shadow-2xl shadow-indigo-500/10">
-                    
-                    {/* Attachment Preview */}
-                    {inputImage && (
-                        <div className="absolute -top-24 left-0 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-white/20 animate-slide-up">
-                            <img src={inputImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
-                            <button onClick={() => setInputImage(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110"><X size={12} /></button>
-                        </div>
-                    )}
-
-                    {/* Tools */}
-                    <div className="flex items-center gap-1 mb-1">
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors"
-                      >
-                        <ImageIcon size={20} />
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                      </button>
-                      <button 
-                        onClick={() => setIsLiveMode(true)}
-                        className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                      >
-                        <Headphones size={20} />
-                      </button>
-                    </div>
-
-                    {/* Text Area */}
-                    <div className="flex-1 py-3">
-                        <textarea
-                            value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={inputImage ? "Ask about this image..." : "Ask LearnBro anything..."}
-                            className="w-full bg-transparent border-none focus:ring-0 p-0 text-slate-800 dark:text-slate-100 placeholder-slate-400 resize-none max-h-32 min-h-[24px] scrollbar-hide text-[16px] font-medium"
-                            rows={1}
-                            style={{ height: 'auto' }}
-                            onInput={(e) => {
-                                const target = e.target as HTMLTextAreaElement;
-                                target.style.height = 'auto';
-                                target.style.height = target.scrollHeight + 'px';
-                            }}
-                        />
-                    </div>
-
-                    {/* Send Button */}
-                    <button 
-                        onClick={handleSendMessage}
-                        disabled={(!inputText.trim() && !inputImage) || isLoading}
+         {/* Navigation Menu */}
+         <div className="flex-1 overflow-y-auto scrollbar-hide py-6 px-3 flex flex-col gap-6">
+            
+            {/* 1. Teaching Modes */}
+            <div className="flex flex-col gap-2">
+                {isSidebarOpen && <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Teaching Modes</h3>}
+                {PERSONAS.map(persona => (
+                    <button
+                        key={persona.id}
+                        onClick={() => setCurrentMode(persona.id)}
                         className={`
-                            p-3 rounded-full mb-0.5 transition-all duration-300 flex items-center justify-center hover:scale-110 active:scale-95
-                            ${(!inputText.trim() && !inputImage) || isLoading
-                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed' 
-                            : 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/30'
-                            }
+                            flex items-center gap-4 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
+                            ${currentMode === persona.id 
+                                ? 'bg-white/10 text-white shadow-lg border border-white/10' 
+                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'}
                         `}
                     >
-                        <Rocket size={20} className={(!inputText.trim() && !inputImage) || isLoading ? "" : "ml-0.5"} />
-                    </button>
-                 </div>
-              </div>
-              
-              <p className="text-center text-[10px] font-semibold tracking-wide text-slate-400 mt-4 opacity-70">
-                 AI can make mistakes. Check important info.
-              </p>
-           </div>
-        </div>
+                        <div className={`
+                            flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                            ${currentMode === persona.id ? persona.bg + ' text-white' : 'bg-slate-800 text-slate-400 group-hover:text-white'}
+                        `}>
+                            {persona.icon}
+                        </div>
+                        
+                        {isSidebarOpen && (
+                            <div className="text-left animate-fade-in flex-1">
+                                <div className="font-bold text-sm leading-none mb-1">{persona.label}</div>
+                                <div className="text-[10px] opacity-60 font-medium">{persona.desc}</div>
+                            </div>
+                        )}
 
+                        {/* Active Indicator Strip */}
+                        {currentMode === persona.id && (
+                            <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full ${persona.bg}`}></div>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {/* 2. Study Tools (Updated) */}
+            <div className="flex flex-col gap-2">
+                {isSidebarOpen && <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Study Tools</h3>}
+                
+                {TOOLS.map(tool => (
+                    <button 
+                        key={tool.id}
+                        onClick={() => handleToolClick(tool)}
+                        className="flex items-center gap-4 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group"
+                    >
+                         <div className={`flex-shrink-0 w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center transition-colors ${tool.bg} ${tool.color}`}>
+                             {tool.icon}
+                         </div>
+                         {isSidebarOpen && (
+                            <div className="text-left animate-fade-in flex-1">
+                                <span className="font-bold text-sm block leading-none mb-1">{tool.label}</span>
+                                <span className="text-[10px] opacity-50 font-medium">{tool.desc}</span>
+                            </div>
+                         )}
+                    </button>
+                ))}
+            </div>
+
+         </div>
+
+         {/* Bottom User Area */}
+         <div className="p-4 border-t border-white/5">
+             <button className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-white/5 transition-colors group">
+                 <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 p-0.5">
+                     <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                         <span className="font-bold text-xs">ME</span>
+                     </div>
+                 </div>
+                 {isSidebarOpen && (
+                     <div className="text-left animate-fade-in">
+                         <div className="text-sm font-bold text-white">Student Account</div>
+                         <div className="text-[10px] text-slate-400">Pro Plan Active</div>
+                     </div>
+                 )}
+                 {isSidebarOpen && <Settings size={16} className="ml-auto text-slate-500 group-hover:text-white" />}
+             </button>
+         </div>
+      </aside>
+
+
+      {/* --- CENTER MAIN (Chat Zone) --- */}
+      <main className={`
+          flex-1 flex flex-col h-full relative z-10 min-w-0 transition-all duration-300
+          ${isSidebarOpen ? 'md:ml-0' : 'md:ml-0'} 
+      `}>
+         
+         {/* Mobile Header Overlay Trigger */}
+         <div className="md:hidden absolute top-4 left-4 z-50">
+             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-800 rounded-lg border border-slate-700 shadow-lg text-white">
+                 {isSidebarOpen ? <X size={20}/> : <Menu size={20}/>}
+             </button>
+         </div>
+
+         {/* Top Bar */}
+         <header className="h-20 flex items-center justify-between px-6 md:px-12 border-b border-white/5 bg-slate-950/50 backdrop-blur-sm z-20">
+            {/* Mode Indicator & Title */}
+            <div className="flex flex-col ml-10 md:ml-0 gap-1">
+                 {/* Current Mode Badge */}
+                 <div className={`
+                    inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md w-fit animate-fade-in
+                 `}>
+                    <div className={`w-2 h-2 rounded-full ${activePersona.bg} shadow-[0_0_8px_currentColor] animate-pulse`}></div>
+                    <span className={`text-xs font-bold uppercase tracking-wide ${activePersona.color}`}>
+                        {activePersona.label}
+                    </span>
+                 </div>
+
+                <h2 className="hidden sm:block text-sm text-slate-400 font-medium tracking-wide">
+                    Physics <span className="text-slate-600 mx-2">•</span> Motion
+                </h2>
+            </div>
+
+            <div className="flex items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-full">
+                    <Flame size={16} className="text-amber-500 fill-amber-500 animate-pulse" />
+                    <span className="text-sm font-bold text-amber-500">12</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-full">
+                    <Zap size={16} className="text-indigo-400 fill-indigo-400" />
+                    <span className="text-sm font-bold text-indigo-400">85%</span>
+                </div>
+                <button onClick={() => setIsRightPanelOpen(!isRightPanelOpen)} className="xl:hidden p-2 text-slate-400 hover:text-white">
+                    <BrainCircuit size={24} />
+                </button>
+            </div>
+         </header>
+
+         {/* Chat Messages Area */}
+         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-12 scrollbar-hide">
+            <div className="max-w-3xl mx-auto space-y-8 pb-32">
+                
+                {messages.map((msg, index) => (
+                    <div 
+                        key={msg.id} 
+                        className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-slide-up`}
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                        {/* AI Avatar Orb for Model messages */}
+                        {msg.role === 'model' && (
+                            <div className={`mb-1 relative`}>
+                                <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center bg-slate-900 shadow-[0_0_15px_currentColor] ${getOrbColor()} animate-orb`}>
+                                    <BrainCircuit size={16} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className={`
+                            max-w-[95%] md:max-w-[85%] rounded-3xl p-5 md:p-6 relative overflow-hidden shadow-2xl
+                            ${msg.role === 'user' 
+                                ? 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white rounded-tr-sm' 
+                                : 'glass-panel text-slate-200 rounded-tl-sm border border-white/5'}
+                        `}>
+                            {msg.image && (
+                                <img src={msg.image} alt="Uploaded" className="max-h-60 rounded-xl mb-4 border border-white/10" />
+                            )}
+                            
+                            <div className="relative z-10">
+                                {msg.contentType === 'quiz' && msg.contentData ? (
+                                    <QuizView data={msg.contentData} />
+                                ) : msg.contentType === 'flashcards' && msg.contentData ? (
+                                    <FlashcardView data={msg.contentData} />
+                                ) : msg.contentType === 'practice' && msg.contentData ? (
+                                    <PracticeProblemsView data={msg.contentData} />
+                                ) : msg.contentType === 'cheatsheet' && msg.contentData ? (
+                                    <CheatSheetView data={msg.contentData} />
+                                ) : msg.contentType === 'note-correction' && msg.contentData ? (
+                                    <NoteGraderView data={msg.contentData} />
+                                ) : msg.role === 'user' ? (
+                                    <p className="text-lg leading-relaxed font-medium">{msg.text}</p>
+                                ) : (
+                                    <MarkdownRenderer content={msg.text} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
+                {isLoading && (
+                    <div className="flex items-start gap-4 animate-fade-in">
+                         <div className={`w-8 h-8 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center shadow-[0_0_15px_currentColor] ${getOrbColor()} animate-orb`}>
+                            <BrainCircuit size={16} />
+                        </div>
+                        <div className="glass-panel px-6 py-4 rounded-3xl rounded-tl-sm flex items-center gap-2">
+                             <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                             <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                             <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+            </div>
+         </div>
+
+         {/* Input Zone */}
+         <div className="absolute bottom-6 left-0 right-0 z-30 px-4 md:px-0 pointer-events-none">
+             <div className="max-w-3xl mx-auto flex flex-col gap-4 pointer-events-auto">
+                 
+                 {/* Smart Chips */}
+                 <SmartChips onSelect={handleSmartChip} />
+
+                 {/* Floating Glass Input */}
+                 <div className="glass-panel rounded-[2rem] p-2 pl-6 flex items-end gap-3 shadow-[0_0_40px_rgba(0,0,0,0.3)] border border-white/10 relative overflow-hidden group bg-slate-900/80 backdrop-blur-xl">
+                     
+                     {/* Input Glow */}
+                     <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
+
+                     {inputImage && (
+                        <div className="absolute -top-32 left-4 p-2 bg-slate-900 rounded-xl border border-slate-700 animate-slide-up shadow-xl">
+                             <img src={inputImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
+                             <button onClick={() => setInputImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full"><X size={12}/></button>
+                        </div>
+                     )}
+
+                     <div className="flex items-center gap-2 mb-2">
+                         <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-cyan-400 transition-colors p-2 rounded-full hover:bg-white/5">
+                             <ImageIcon size={20} />
+                             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                         </button>
+                         <button onClick={() => setIsLiveMode(true)} className="text-slate-400 hover:text-rose-400 transition-colors p-2 rounded-full hover:bg-white/5">
+                             <Headphones size={20} />
+                         </button>
+                     </div>
+
+                     <textarea
+                        ref={textareaRef}
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={inputImage ? "Ask about this image..." : "Ask LearnBro anything..."}
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 resize-none max-h-32 min-h-[44px] py-3 text-lg font-medium scrollbar-hide"
+                        rows={1}
+                     />
+
+                     <button 
+                        onClick={() => handleSendMessage()}
+                        disabled={(!inputText.trim() && !inputImage) || isLoading}
+                        className={`
+                            h-12 w-12 rounded-full flex items-center justify-center mb-1 transition-all duration-300
+                            ${(!inputText.trim() && !inputImage) || isLoading
+                                ? 'bg-slate-800 text-slate-600' 
+                                : 'bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 hover:scale-110 active:scale-95'
+                            }
+                        `}
+                     >
+                         <Rocket size={20} className={(!inputText.trim() && !inputImage) ? "" : "ml-0.5"} />
+                     </button>
+                 </div>
+                 
+                 <p className="text-center text-[10px] text-slate-600 font-medium tracking-wide">
+                    AI can make mistakes. Verify important info.
+                 </p>
+             </div>
+         </div>
       </main>
+
+      {/* --- RIGHT PANEL (Brain Dashboard) --- */}
+      <aside className={`
+         fixed inset-y-0 right-0 z-40 w-80 glass-panel border-l border-white/5 transition-transform duration-300
+         xl:relative xl:translate-x-0
+         ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}
+      `}>
+          <div className="h-full flex flex-col">
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                  <span className="font-display font-bold text-lg">Brain Stats</span>
+                  <button onClick={() => setIsRightPanelOpen(false)} className="xl:hidden p-1 text-slate-400"><X size={20}/></button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                  <BrainDashboard 
+                      masteryData={MOCK_MASTERY}
+                      streak={12}
+                      brainEnergy={85}
+                  />
+              </div>
+          </div>
+      </aside>
+      
+      {/* Modals */}
+      {isLiveMode && <LiveVoiceModal onClose={() => setIsLiveMode(false)} />}
+      {showTimeline && <TimelineView events={MOCK_EVENTS} onClose={() => setShowTimeline(false)} />}
+
     </div>
   );
 }

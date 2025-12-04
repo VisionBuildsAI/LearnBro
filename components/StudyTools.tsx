@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, RotateCw, ChevronRight, ChevronLeft, BrainCircuit, AlertCircle, HelpCircle, Eye, EyeOff, Trophy, Sparkles } from 'lucide-react';
+import { Check, X, RotateCw, ChevronRight, ChevronLeft, BrainCircuit, AlertCircle, HelpCircle, Eye, EyeOff, Trophy, Sparkles, FileText, Bookmark, Lightbulb, CheckCircle2, Shuffle, Plus, Trash2 } from 'lucide-react';
 
 // --- Types ---
 interface QuizQuestion {
@@ -17,6 +17,17 @@ interface PracticeProblem {
     problem: string;
     hint: string;
     solution: string;
+}
+
+interface CheatSheetSection {
+    title: string;
+    items: string[];
+}
+
+interface CheatSheetData {
+    title: string;
+    summary: string;
+    sections: CheatSheetSection[];
 }
 
 // --- Quiz Component ---
@@ -128,76 +139,195 @@ export const QuizView: React.FC<{ data: QuizQuestion[] }> = ({ data }) => {
 
 // --- Flashcard Component ---
 export const FlashcardView: React.FC<{ data: Flashcard[] }> = ({ data }) => {
+  const [deck, setDeck] = useState<Flashcard[]>(data);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newFront, setNewFront] = useState("");
+  const [newBack, setNewBack] = useState("");
 
-  if (!data || !Array.isArray(data) || data.length === 0) {
+  if (!deck || !Array.isArray(deck) || deck.length === 0) {
+    // If deck is empty (after deletion), show empty state
     return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 flex items-center gap-2">
-            <AlertCircle size={20} />
-            <p>Could not load flashcards.</p>
+        <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center flex flex-col items-center gap-3">
+             <div className="p-3 bg-white rounded-full shadow-sm">
+                <BrainCircuit size={24} className="text-slate-400" />
+             </div>
+             <p className="text-slate-500 font-medium">Deck is empty.</p>
+             <button 
+                onClick={() => setIsAdding(true)}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-bold hover:bg-indigo-600"
+             >
+                Create New Card
+             </button>
+             {isAdding && (
+                 <div className="w-full max-w-sm mt-4 p-4 bg-white border border-slate-200 rounded-xl text-left">
+                     <input 
+                        className="w-full mb-2 p-2 border border-slate-200 rounded text-sm text-slate-800"
+                        placeholder="Front (Question)"
+                        value={newFront} onChange={e => setNewFront(e.target.value)}
+                     />
+                     <textarea 
+                        className="w-full mb-2 p-2 border border-slate-200 rounded text-sm text-slate-800 resize-none"
+                        placeholder="Back (Answer)"
+                        value={newBack} onChange={e => setNewBack(e.target.value)}
+                     />
+                     <div className="flex gap-2">
+                         <button 
+                            onClick={() => {
+                                if(newFront && newBack) {
+                                    setDeck([{front: newFront, back: newBack}]);
+                                    setNewFront(""); setNewBack(""); setIsAdding(false);
+                                }
+                            }}
+                            className="flex-1 bg-indigo-500 text-white py-1.5 rounded text-xs font-bold"
+                         >Save</button>
+                         <button onClick={() => setIsAdding(false)} className="px-3 py-1.5 border rounded text-xs">Cancel</button>
+                     </div>
+                 </div>
+             )}
         </div>
     );
   }
 
   const handleNext = () => {
     setIsFlipped(false);
-    setTimeout(() => setCurrentIndex((prev) => (prev + 1) % data.length), 300);
+    setTimeout(() => setCurrentIndex((prev) => (prev + 1) % deck.length), 300);
   };
 
   const handlePrev = () => {
     setIsFlipped(false);
-    setTimeout(() => setCurrentIndex((prev) => (prev - 1 + data.length) % data.length), 300);
+    setTimeout(() => setCurrentIndex((prev) => (prev - 1 + deck.length) % deck.length), 300);
+  };
+  
+  const handleShuffle = () => {
+      const shuffled = [...deck].sort(() => Math.random() - 0.5);
+      setDeck(shuffled);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+  };
+  
+  const handleDeleteCurrent = () => {
+      const newDeck = deck.filter((_, i) => i !== currentIndex);
+      setDeck(newDeck);
+      if (currentIndex >= newDeck.length) setCurrentIndex(Math.max(0, newDeck.length - 1));
+      setIsFlipped(false);
+  };
+  
+  const handleAddCard = () => {
+      if (!newFront.trim() || !newBack.trim()) return;
+      const newCard = { front: newFront, back: newBack };
+      setDeck([...deck, newCard]);
+      setNewFront("");
+      setNewBack("");
+      setIsAdding(false);
+      // Optional: Jump to new card
+      setCurrentIndex(deck.length); 
   };
 
   return (
     <div className="w-full max-w-md mx-auto py-4">
-      <div className="flex items-center justify-between mb-6 px-2">
+      {/* Controls Header */}
+      <div className="flex items-center justify-between mb-4 px-2">
         <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
           <RotateCw size={20} className="text-indigo-600" /> Flashcards
         </h3>
-        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-          {currentIndex + 1} / {data.length}
-        </span>
-      </div>
-
-      <div 
-        className="relative h-72 w-full perspective-1000 cursor-pointer group"
-        onClick={() => setIsFlipped(!isFlipped)}
-      >
-        <div 
-          className={`
-            relative w-full h-full text-center transition-transform duration-700 transform-style-3d rounded-3xl
-            ${isFlipped ? 'rotate-y-180' : ''}
-          `}
-          style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-        >
-          {/* Front */}
-          <div 
-            className="absolute inset-0 backface-hidden bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-3xl flex flex-col items-center justify-center p-8 shadow-xl shadow-indigo-200"
-            style={{ backfaceVisibility: 'hidden' }}
-          >
-            <div className="absolute top-6 left-6 w-12 h-12 bg-white/10 rounded-full blur-xl"></div>
-            <div className="absolute bottom-6 right-6 w-20 h-20 bg-black/10 rounded-full blur-xl"></div>
-            
-            <p className="text-xs uppercase tracking-widest opacity-60 mb-6 font-semibold bg-black/20 px-3 py-1 rounded-full">Concept</p>
-            <h4 className="text-3xl font-bold leading-tight drop-shadow-sm">{data[currentIndex].front}</h4>
-            <div className="absolute bottom-6 text-xs font-medium opacity-50 flex items-center gap-1 animate-pulse">
-                Click to flip <RotateCw size={10} />
-            </div>
-          </div>
-
-          {/* Back */}
-          <div 
-            className="absolute inset-0 backface-hidden bg-white text-slate-800 border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-8 rotate-y-180 shadow-xl shadow-slate-200"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-          >
-            <p className="text-xs uppercase tracking-widest text-indigo-500 mb-6 font-bold bg-indigo-50 px-3 py-1 rounded-full">Definition</p>
-            <p className="text-lg leading-relaxed font-medium text-slate-700">{data[currentIndex].back}</p>
-          </div>
+        <div className="flex items-center gap-2">
+             <button onClick={handleShuffle} title="Shuffle" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                 <Shuffle size={16} />
+             </button>
+             <button onClick={() => setIsAdding(!isAdding)} title="Add Card" className={`p-1.5 rounded-lg transition-colors ${isAdding ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                 <Plus size={16} />
+             </button>
         </div>
       </div>
+      
+      {/* Progress Bar */}
+      <div className="w-full h-1.5 bg-slate-100 rounded-full mb-6 overflow-hidden">
+          <div 
+            className="h-full bg-indigo-500 transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / deck.length) * 100}%` }}
+          ></div>
+      </div>
+      
+      {/* Add Card Form */}
+      {isAdding && (
+         <div className="mb-6 p-4 bg-white border border-indigo-100 rounded-xl shadow-sm animate-slide-up relative z-20">
+             <h4 className="text-xs font-bold text-indigo-500 uppercase mb-2">New Card</h4>
+             <input 
+                className="w-full mb-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                placeholder="Front (Question)"
+                value={newFront} onChange={e => setNewFront(e.target.value)}
+             />
+             <textarea 
+                className="w-full mb-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none resize-none"
+                placeholder="Back (Answer)"
+                rows={2}
+                value={newBack} onChange={e => setNewBack(e.target.value)}
+             />
+             <div className="flex gap-2">
+                 <button 
+                    onClick={handleAddCard}
+                    disabled={!newFront || !newBack}
+                    className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
+                 >
+                    Add Card
+                 </button>
+                 <button onClick={() => setIsAdding(false)} className="px-3 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-lg text-xs font-bold">Cancel</button>
+             </div>
+         </div>
+      )}
 
+      {/* Card Display */}
+      <div className="relative">
+          <div 
+            className="relative h-72 w-full perspective-1000 cursor-pointer group"
+            onClick={() => setIsFlipped(!isFlipped)}
+          >
+            <div 
+              className={`
+                relative w-full h-full text-center transition-transform duration-700 transform-style-3d rounded-3xl
+                ${isFlipped ? 'rotate-y-180' : ''}
+              `}
+              style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+            >
+              {/* Front */}
+              <div 
+                className="absolute inset-0 backface-hidden bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-3xl flex flex-col items-center justify-center p-8 shadow-xl shadow-indigo-200"
+                style={{ backfaceVisibility: 'hidden' }}
+              >
+                <div className="absolute top-6 left-6 w-12 h-12 bg-white/10 rounded-full blur-xl"></div>
+                <div className="absolute bottom-6 right-6 w-20 h-20 bg-black/10 rounded-full blur-xl"></div>
+                
+                <p className="text-xs uppercase tracking-widest opacity-60 mb-6 font-semibold bg-black/20 px-3 py-1 rounded-full">Concept</p>
+                <h4 className="text-2xl md:text-3xl font-bold leading-tight drop-shadow-sm select-none">{deck[currentIndex].front}</h4>
+                <div className="absolute bottom-6 text-xs font-medium opacity-50 flex items-center gap-1 animate-pulse">
+                    Click to flip <RotateCw size={10} />
+                </div>
+              </div>
+    
+              {/* Back */}
+              <div 
+                className="absolute inset-0 backface-hidden bg-white text-slate-800 border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-8 rotate-y-180 shadow-xl shadow-slate-200"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                <p className="text-xs uppercase tracking-widest text-indigo-500 mb-6 font-bold bg-indigo-50 px-3 py-1 rounded-full">Definition</p>
+                <p className="text-lg leading-relaxed font-medium text-slate-700 select-none">{deck[currentIndex].back}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Delete Button (Floating) */}
+          <button 
+             onClick={(e) => { e.stopPropagation(); handleDeleteCurrent(); }}
+             className="absolute -right-2 -top-2 p-2 bg-white text-rose-500 border border-rose-100 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-50"
+             title="Delete Card"
+          >
+             <Trash2 size={14} />
+          </button>
+      </div>
+
+      {/* Navigation */}
       <div className="flex justify-between items-center mt-8 px-8">
         <button 
           onClick={(e) => { e.stopPropagation(); handlePrev(); }}
@@ -205,9 +335,14 @@ export const FlashcardView: React.FC<{ data: Flashcard[] }> = ({ data }) => {
         >
           <ChevronLeft size={24} />
         </button>
-        <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase">
-          {isFlipped ? "Answer" : "Question"}
-        </p>
+        <div className="text-center">
+             <p className="text-xs text-slate-400 font-semibold tracking-wide uppercase mb-1">
+               {isFlipped ? "Answer" : "Question"}
+             </p>
+             <p className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">
+                 {currentIndex + 1} / {deck.length}
+             </p>
+        </div>
         <button 
           onClick={(e) => { e.stopPropagation(); handleNext(); }}
           className="p-3 rounded-full bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-all shadow-sm hover:shadow-md hover:translate-x-1"
@@ -317,5 +452,64 @@ export const PracticeProblemsView: React.FC<{ data: PracticeProblem[] }> = ({ da
     );
 };
 
-// Helper for icons
-import { Lightbulb, CheckCircle2 } from 'lucide-react';
+// --- Cheat Sheet Component ---
+export const CheatSheetView: React.FC<{ data: CheatSheetData }> = ({ data }) => {
+    if (!data || !data.sections) {
+        return (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 flex items-center gap-2">
+                <AlertCircle size={20} />
+                <p>Could not load cheat sheet.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 w-full bg-white text-slate-900 rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm print-container">
+            {/* Header */}
+            <div className="border-b-2 border-slate-900 pb-4 mb-6">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-slate-900 mb-2">{data.title}</h2>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">High-Yield Cheat Sheet</p>
+                    </div>
+                    <div className="p-3 bg-slate-900 text-white rounded-xl">
+                        <FileText size={24} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                <p className="text-sm font-semibold text-slate-700 italic leading-relaxed">
+                    "{data.summary}"
+                </p>
+            </div>
+
+            {/* Sections */}
+            <div className="grid grid-cols-1 gap-6">
+                {data.sections.map((section, idx) => (
+                    <div key={idx} className="break-inside-avoid">
+                        <h3 className="text-lg font-bold text-indigo-700 mb-3 flex items-center gap-2 border-b border-indigo-100 pb-1">
+                            <Bookmark size={18} className="fill-indigo-100" />
+                            {section.title}
+                        </h3>
+                        <ul className="space-y-2">
+                            {section.items.map((item, i) => (
+                                <li key={i} className="flex items-start gap-3 text-sm text-slate-700 group">
+                                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 group-hover:bg-indigo-600 transition-colors flex-shrink-0"></div>
+                                    <span className="font-medium leading-relaxed">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="pt-8 mt-4 border-t border-slate-100 text-center">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Generated by LearnBro AI
+                </p>
+            </div>
+        </div>
+    );
+};
