@@ -1,6 +1,8 @@
+import React from 'react';
+
 export type Role = 'user' | 'model';
 
-export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice';
+export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction';
 
 export interface ChatMessage {
   id: string;
@@ -14,6 +16,7 @@ export interface ChatMessage {
 
 export enum TeachingMode {
   DEFAULT = "Best Friend",
+  DEEP_THINK = "Deep Thinking",
   ELI5 = "Explain Like I'm 5",
   COMEDIAN = "Comedian",
   STRICT_MOM = "Strict Mom",
@@ -39,4 +42,14 @@ export interface LearningEvent {
   type: 'quiz' | 'flashcards' | 'practice' | 'chat';
   score?: number; // 0-100
   mastery?: 'low' | 'medium' | 'high';
+}
+
+export interface NoteCorrectionData {
+  title: string;
+  analysis: {
+    point: string;
+    correction: string;
+  }[];
+  correctedNotes: string;
+  diagramUrl?: string;
 }

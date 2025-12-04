@@ -1,6 +1,6 @@
 import { GoogleGenAI, Content, Part, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION, getModeInstruction } from "../constants";
-import { TeachingMode, ChatMessage } from "../types";
+import { TeachingMode, ChatMessage, NoteCorrectionData } from "../types";
 
 const apiKey = process.env.API_KEY;
 
@@ -53,13 +53,17 @@ export const sendMessageToLearnBro = async (
     }
 
     // 4. Initialize Chat
-    // We use a fresh chat instance with history for each turn to allow dynamic system instruction updates if needed,
-    // though here we embed the mode in the message.
+    const isThinkingMode = mode === TeachingMode.DEEP_THINK;
+    
     const chat = ai.chats.create({
-      model: "gemini-2.5-flash",
+      model: isThinkingMode ? "gemini-3-pro-preview" : "gemini-2.5-flash",
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.7, // Creative but accurate
+        // Apply thinking config only for DEEP_THINK mode
+        ...(isThinkingMode 
+            ? { thinkingConfig: { thinkingBudget: 32768 } } 
+            : { temperature: 0.7 }
+        ),
       },
       history: historyContent
     });
@@ -206,4 +210,84 @@ export const generateDiagram = async (topic: string): Promise<{ image: string, t
         console.error("Error generating diagram:", error);
         return null;
     }
+};
+
+export const gradeAndFixNotes = async (text: string, imageBase64: string | null): Promise<NoteCorrectionData | null> => {
+  try {
+    const parts: Part[] = [];
+    
+    if (imageBase64) {
+      const data = imageBase64.split(",")[1];
+      const mimeType = imageBase64.split(";")[0].split(":")[1] || "image/jpeg";
+      parts.push({
+        inlineData: { mimeType, data }
+      });
+    }
+
+    parts.push({
+      text: `
+        Analyze these notes (provided as text, image, or both) acting as a strict but helpful professor.
+        1. Identify any factual errors, misconceptions, or missing critical information.
+        2. Create a list of these errors with corrections.
+        3. Rewrite the complete notes in a highly structured, correct format (Markdown).
+        4. Suggest a visual diagram that would clarify the main concept.
+        
+        ${text ? `Here is the text content of the notes: "${text}"` : ""}
+      `
+    });
+
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: "A title for the notes" },
+        analysis: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              point: { type: Type.STRING, description: "The original incorrect or weak point" },
+              correction: { type: Type.STRING, description: "The correction or improvement" }
+            }
+          }
+        },
+        correctedNotes: { type: Type.STRING, description: "The full corrected notes in Markdown format" },
+        diagramPrompt: { type: Type.STRING, description: "A detailed description of a diagram to visualize the concept" }
+      },
+      required: ["title", "analysis", "correctedNotes", "diagramPrompt"]
+    };
+
+    // Step 1: Analyze and correct text
+    const textResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+        temperature: 0.3 // Low temperature for factual accuracy
+      }
+    });
+
+    const jsonText = textResponse.text?.replace(/```json/g, '').replace(/```/g, '').trim() || "{}";
+    const result = JSON.parse(jsonText);
+
+    // Step 2: Generate Diagram if prompted
+    let diagramUrl = undefined;
+    if (result.diagramPrompt) {
+       const diagramRes = await generateDiagram(result.diagramPrompt);
+       if (diagramRes?.image) {
+         diagramUrl = diagramRes.image;
+       }
+    }
+
+    return {
+      title: result.title,
+      analysis: result.analysis,
+      correctedNotes: result.correctedNotes,
+      diagramUrl: diagramUrl
+    };
+
+  } catch (error) {
+    console.error("Error grading notes:", error);
+    return null;
+  }
 };

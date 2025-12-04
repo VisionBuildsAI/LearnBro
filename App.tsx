@@ -30,14 +30,18 @@ import {
   History,
   Activity,
   Share2,
-  Headphones
+  Headphones,
+  Network,
+  Highlighter,
+  FileText
 } from 'lucide-react';
 import { TeachingMode, ChatMessage, LearningEvent } from './types';
-import { sendMessageToLearnBro, generateStudyMaterial, generateDiagram } from './services/geminiService';
+import { sendMessageToLearnBro, generateStudyMaterial, generateDiagram, gradeAndFixNotes } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { QuizView, FlashcardView, PracticeProblemsView } from './components/StudyTools';
 import { TimelineView } from './components/TimelineView';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
+import { NoteGraderView } from './components/NoteGrader';
 
 // --- Configuration & Data ---
 
@@ -51,6 +55,7 @@ const SUGGESTIONS = [
 
 const PERSONAS = [
   { id: TeachingMode.DEFAULT, icon: <Smile size={20} />, color: "from-indigo-400 to-blue-500", label: "Best Friend", desc: "Friendly & Supportive" },
+  { id: TeachingMode.DEEP_THINK, icon: <Network size={20} />, color: "from-violet-500 to-fuchsia-600", label: "Deep Thinker", desc: "Complex Logic & Reasoning" },
   { id: TeachingMode.ELI5, icon: <BookOpen size={20} />, color: "from-orange-400 to-amber-500", label: "Explain Like I'm 5", desc: "Simple & Cute" },
   { id: TeachingMode.COMEDIAN, icon: <Sparkles size={20} />, color: "from-pink-500 to-rose-500", label: "Comedian", desc: "Roasts & Jokes" },
   { id: TeachingMode.STRICT_MOM, icon: <Frown size={20} />, color: "from-red-500 to-red-700", label: "Strict Mom", desc: "Tough Love" },
@@ -125,6 +130,94 @@ const InputModal = ({ isOpen, onClose, title, placeholder, onConfirm }: { isOpen
   );
 };
 
+const NoteUploadModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: (text: string, image: string | null) => void }) => {
+  const [text, setText] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if(isOpen) {
+        setText("");
+        setImage(null);
+    }
+  }, [isOpen]);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+       <div className="glass-panel rounded-3xl w-full max-w-lg p-8 shadow-2xl animate-slide-up relative dark:text-white">
+         <div className="absolute -top-20 -left-20 w-40 h-40 bg-rose-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+
+         <div className="flex items-center gap-3 mb-4 relative z-10">
+            <div className="p-3 bg-rose-100 text-rose-600 rounded-xl">
+               <Highlighter size={24} />
+            </div>
+            <div>
+               <h3 className="text-2xl font-bold font-display">Grade & Fix Notes</h3>
+               <p className="text-sm opacity-70">Upload your notes to find errors.</p>
+            </div>
+         </div>
+
+         {/* Image Upload Area */}
+         <div 
+           onClick={() => fileRef.current?.click()}
+           className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 mb-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative group"
+         >
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+            {image ? (
+                <div className="relative">
+                   <img src={image} alt="Preview" className="max-h-48 mx-auto rounded-lg shadow-sm" />
+                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                      <span className="text-white font-medium flex items-center gap-2"><Camera size={16}/> Change Image</span>
+                   </div>
+                </div>
+            ) : (
+                <div className="py-6 text-slate-400">
+                    <Camera size={32} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium">Click to upload photo of notes</p>
+                </div>
+            )}
+         </div>
+
+         {/* Text Input */}
+         <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Or paste your text notes here..."
+            className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all text-sm min-h-[100px] resize-none"
+         />
+
+         <div className="flex justify-end gap-3 relative z-10">
+           <button onClick={onClose} className="px-5 py-2.5 opacity-70 hover:opacity-100 font-medium transition-opacity">Cancel</button>
+           <button 
+             onClick={() => {
+                 if(text.trim() || image) {
+                     onConfirm(text, image);
+                     onClose();
+                 }
+             }}
+             disabled={!text.trim() && !image}
+             className="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-rose-500/25 hover:scale-105 transition-all disabled:opacity-50"
+           >
+             Analyze Notes
+           </button>
+         </div>
+
+       </div>
+     </div>
+  );
+};
+
 const StreakCounter = () => (
   <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100/50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-full group cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
     <Flame size={14} className="text-orange-500 animate-pulse" />
@@ -171,6 +264,8 @@ function App() {
       placeholder: "",
       onConfirm: (val: string) => {}
   });
+
+  const [noteUploadOpen, setNoteUploadOpen] = useState(false);
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -311,6 +406,46 @@ function App() {
         setIsLoading(false);
     }
   };
+  
+  const handleNoteGrading = async (text: string, image: string | null) => {
+      setIsLoading(true);
+      const userMsgId = Date.now().toString();
+      
+      setMessages(prev => [...prev, {
+          id: userMsgId,
+          role: 'user',
+          text: "Grade these notes please.",
+          image: image || undefined,
+          timestamp: Date.now()
+      }]);
+
+      try {
+          const result = await gradeAndFixNotes(text, image);
+          
+          if (result) {
+              setMessages(prev => [...prev, {
+                  id: (Date.now() + 1).toString(),
+                  role: 'model',
+                  text: "I've analyzed your notes. Here is the graded version with corrections and a visual aid.",
+                  contentType: 'note-correction',
+                  contentData: result,
+                  timestamp: Date.now()
+              }]);
+          } else {
+              throw new Error("Analysis failed");
+          }
+
+      } catch (e) {
+         setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'model',
+            text: "Could not grade the notes right now. Try clearer text or image.",
+            timestamp: Date.now()
+        }]);
+      } finally {
+          setIsLoading(false);
+      }
+  };
 
   const handleShareImage = async (base64Data: string) => {
     try {
@@ -422,6 +557,13 @@ function App() {
           placeholder={modalConfig.placeholder}
           onConfirm={modalConfig.onConfirm}
       />
+      
+      {/* Note Grader Modal */}
+      <NoteUploadModal 
+         isOpen={noteUploadOpen}
+         onClose={() => setNoteUploadOpen(false)}
+         onConfirm={handleNoteGrading}
+      />
 
       {/* Timeline Modal */}
       {showTimeline && (
@@ -527,6 +669,20 @@ function App() {
                    </button>
                 ))}
              </div>
+             
+             {/* Note Grader Button */}
+             <button 
+                onClick={() => { setNoteUploadOpen(true); setIsSidebarOpen(false); }}
+                className="mt-2 w-full glass-panel p-3 rounded-2xl flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors group border-transparent hover:border-rose-200"
+             >
+                <div className="p-2 bg-rose-500 text-white rounded-xl shadow-md group-hover:scale-110 transition-transform">
+                    <Highlighter size={18} />
+                </div>
+                <div className="text-left">
+                    <span className="text-sm font-bold block">Grade Notes</span>
+                    <span className="text-[10px] opacity-60">Upload & Fix Errors</span>
+                </div>
+             </button>
           </div>
 
           {/* Timeline Button (Explicit) */}
@@ -551,7 +707,7 @@ function App() {
                    <Zap size={14} className="text-cyan-500" /> Pro Tip
                  </div>
                  <p className="text-xs font-medium opacity-80 leading-relaxed">
-                    Upload a photo of your homework and I'll explain step-by-step.
+                    Use the new "Grade Notes" tool to analyze your homework!
                  </p>
               </div>
               <div className="absolute inset-0 bg-white/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -635,6 +791,8 @@ function App() {
                             <FlashcardView data={msg.contentData} />
                         ) : msg.contentType === 'practice' && msg.contentData ? (
                             <PracticeProblemsView data={msg.contentData} />
+                        ) : msg.contentType === 'note-correction' && msg.contentData ? (
+                            <NoteGraderView data={msg.contentData} />
                         ) : msg.role === 'user' ? (
                           <p className="text-[15px] md:text-[16px] leading-relaxed font-medium">{msg.text}</p>
                         ) : (

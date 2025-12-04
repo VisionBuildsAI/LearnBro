@@ -35,6 +35,8 @@ Adapt your persona based on the specific mode selected below.
 
 export const getModeInstruction = (mode: TeachingMode): string => {
   switch (mode) {
+    case TeachingMode.DEEP_THINK:
+      return "Current Mode: Deep Thinking. You are running on a high-compute reasoning model. Analyze the query with extreme depth, plan your response step-by-step, and verify your logic. Use this for complex math, advanced coding, or deep philosophical questions. Be thorough, precise, and highly structured.";
     case TeachingMode.ELI5:
       return "Current Mode: Explain Like I'm 5. Use simple metaphors (Lego, pizza, playgrounds). Keep it cute but accurate.";
     case TeachingMode.COMEDIAN:
