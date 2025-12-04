@@ -28,13 +28,16 @@ import {
   Smile,
   Frown,
   History,
-  Activity
+  Activity,
+  Share2,
+  Headphones
 } from 'lucide-react';
 import { TeachingMode, ChatMessage, LearningEvent } from './types';
 import { sendMessageToLearnBro, generateStudyMaterial, generateDiagram } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { QuizView, FlashcardView, PracticeProblemsView } from './components/StudyTools';
 import { TimelineView } from './components/TimelineView';
+import { LiveVoiceModal } from './components/LiveVoiceModal';
 
 // --- Configuration & Data ---
 
@@ -152,6 +155,7 @@ function App() {
   const [currentMode, setCurrentMode] = useState<TeachingMode>(TeachingMode.DEFAULT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [isLiveMode, setIsLiveMode] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' ||
@@ -308,6 +312,32 @@ function App() {
     }
   };
 
+  const handleShareImage = async (base64Data: string) => {
+    try {
+        const res = await fetch(base64Data);
+        const blob = await res.blob();
+        const file = new File([blob], "learnbro-visual.png", { type: "image/png" });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+             await navigator.share({
+                files: [file],
+                title: 'LearnBro Visual',
+                text: 'Check out this visual from LearnBro!'
+            });
+        } else {
+             // Fallback: Download
+             const link = document.createElement('a');
+             link.href = base64Data;
+             link.download = 'learnbro-visual.png';
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+        }
+    } catch (e) {
+        console.error("Sharing failed", e);
+    }
+  };
+
   const handleSendMessage = async () => {
     if ((!inputText.trim() && !inputImage) || isLoading) return;
 
@@ -379,6 +409,11 @@ function App() {
       {/* Background with Aurora Effect */}
       <div className="absolute inset-0 z-0 bg-aurora"></div>
       
+      {/* Live Voice Modal */}
+      {isLiveMode && (
+        <LiveVoiceModal onClose={() => setIsLiveMode(false)} />
+      )}
+
       {/* Input Modal */}
       <InputModal 
           isOpen={modalConfig.isOpen}
@@ -581,7 +616,16 @@ function App() {
                       : 'glass-panel text-slate-800 dark:text-slate-100 rounded-bl-md'}
                   `}>
                     {msg.image && (
-                       <img src={msg.image} alt="Upload" className="rounded-xl mb-4 max-h-64 object-contain bg-black/10 dark:bg-black/30 border border-white/10" />
+                      <div className="relative mb-4 group/image">
+                          <img src={msg.image} alt="Upload" className="rounded-xl max-h-64 w-full object-contain bg-black/10 dark:bg-black/30 border border-white/10" />
+                          <button 
+                            onClick={() => handleShareImage(msg.image!)}
+                            className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md opacity-0 group-hover/image:opacity-100 transition-all duration-200 shadow-lg hover:scale-110"
+                            title="Share Image"
+                          >
+                            <Share2 size={16} />
+                          </button>
+                      </div>
                     )}
 
                     <div className="relative z-10">
@@ -664,11 +708,11 @@ function App() {
                         <ImageIcon size={20} />
                         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                       </button>
-                      <button className="hidden sm:block p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors">
-                        <Mic size={20} />
-                      </button>
-                      <button className="hidden sm:block p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors">
-                        <Camera size={20} />
+                      <button 
+                        onClick={() => setIsLiveMode(true)}
+                        className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                      >
+                        <Headphones size={20} />
                       </button>
                     </div>
 
