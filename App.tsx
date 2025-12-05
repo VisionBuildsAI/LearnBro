@@ -14,6 +14,7 @@ import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { NoteGraderView } from './components/NoteGrader';
 import { BrainDashboard } from './components/BrainDashboard';
 import { SmartChips } from './components/SmartChips';
+import { CreateNotesModal } from './components/CreateNotesModal';
 
 // --- Configuration & Data ---
 
@@ -29,6 +30,7 @@ const PERSONAS = [
 
 const TOOLS = [
   { id: 'timeline', label: 'Timeline', icon: <History size={18} />, desc: 'History', action: 'timeline', color: 'text-slate-400 group-hover:text-indigo-400', bg: 'group-hover:bg-indigo-500/20' },
+  { id: 'create-notes', label: 'Create Notes', icon: <PenTool size={18} />, desc: 'Editor', action: 'create-notes', color: 'text-slate-400 group-hover:text-pink-400', bg: 'group-hover:bg-pink-500/20' },
   { id: 'quiz', label: 'Create Quiz', icon: <HelpCircle size={18} />, desc: 'Test Prep', prompt: "Create a multiple choice quiz about ", color: 'text-slate-400 group-hover:text-emerald-400', bg: 'group-hover:bg-emerald-500/20' },
   { id: 'flashcards', label: 'Flashcards', icon: <RotateCw size={18} />, desc: 'Memorize', prompt: "Create flashcards for ", color: 'text-slate-400 group-hover:text-amber-400', bg: 'group-hover:bg-amber-500/20' },
   { id: 'notes', label: 'Cheat Sheet', icon: <FileText size={18} />, desc: 'Summaries', prompt: "Create a cheat sheet for ", color: 'text-slate-400 group-hover:text-purple-400', bg: 'group-hover:bg-purple-500/20' },
@@ -68,6 +70,7 @@ function App() {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showCreateNotes, setShowCreateNotes] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -109,6 +112,11 @@ function App() {
   const handleToolClick = (tool: typeof TOOLS[0]) => {
       if (tool.action === 'timeline') {
           setShowTimeline(true);
+      } else if (tool.action === 'create-notes') {
+          setShowCreateNotes(true);
+          if (window.innerWidth < 768) {
+              setIsSidebarOpen(false); // Close sidebar on mobile on selection
+          }
       } else if (tool.prompt) {
           setInputText(tool.prompt);
           // Small timeout to allow render then focus
@@ -520,6 +528,7 @@ function App() {
       {/* Modals */}
       {isLiveMode && <LiveVoiceModal onClose={() => setIsLiveMode(false)} />}
       {showTimeline && <TimelineView events={MOCK_EVENTS} onClose={() => setShowTimeline(false)} />}
+      {showCreateNotes && <CreateNotesModal onClose={() => setShowCreateNotes(false)} />}
 
     </div>
   );
