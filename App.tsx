@@ -3,12 +3,12 @@ import {
   Menu, X, Sparkles, BrainCircuit, Zap,
   Settings, Image as ImageIcon, Rocket, Headphones, Mic, Share2, Search,
   Smile, User, GraduationCap, Flame, Heart, AlertTriangle, Brain, History,
-  ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool
+  ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool, FileQuestion
 } from 'lucide-react';
 import { TeachingMode, ChatMessage, MasteryItem, LearningEvent } from './types';
 import { sendMessageToLearnBro, gradeAndFixNotes } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
-import { QuizView, FlashcardView, PracticeProblemsView, CheatSheetView } from './components/StudyTools';
+import { QuizView, FlashcardView, PracticeProblemsView, CheatSheetView, QuestionPaperView } from './components/StudyTools';
 import { TimelineView } from './components/TimelineView';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { NoteGraderView } from './components/NoteGrader';
@@ -32,6 +32,7 @@ const TOOLS = [
   { id: 'timeline', label: 'Timeline', icon: <History size={18} />, desc: 'History', action: 'timeline', color: 'text-slate-400 group-hover:text-indigo-400', bg: 'group-hover:bg-indigo-500/20' },
   { id: 'create-notes', label: 'Create Notes', icon: <PenTool size={18} />, desc: 'Editor', action: 'create-notes', color: 'text-slate-400 group-hover:text-pink-400', bg: 'group-hover:bg-pink-500/20' },
   { id: 'quiz', label: 'Create Quiz', icon: <HelpCircle size={18} />, desc: 'Test Prep', prompt: "Create a multiple choice quiz about ", color: 'text-slate-400 group-hover:text-emerald-400', bg: 'group-hover:bg-emerald-500/20' },
+  { id: 'question-paper', label: 'Question Paper', icon: <FileQuestion size={18} />, desc: 'Exam Gen', prompt: "Create a question paper on ", color: 'text-slate-400 group-hover:text-orange-400', bg: 'group-hover:bg-orange-500/20' },
   { id: 'flashcards', label: 'Flashcards', icon: <RotateCw size={18} />, desc: 'Memorize', prompt: "Create flashcards for ", color: 'text-slate-400 group-hover:text-amber-400', bg: 'group-hover:bg-amber-500/20' },
   { id: 'notes', label: 'Cheat Sheet', icon: <FileText size={18} />, desc: 'Summaries', prompt: "Create a cheat sheet for ", color: 'text-slate-400 group-hover:text-purple-400', bg: 'group-hover:bg-purple-500/20' },
   { id: 'diagram', label: 'Diagrams', icon: <ImageIcon size={18} />, desc: 'Visuals', prompt: "Generate a diagram explaining ", color: 'text-slate-400 group-hover:text-cyan-400', bg: 'group-hover:bg-cyan-500/20' },
@@ -414,6 +415,8 @@ function App() {
                                     <PracticeProblemsView data={msg.contentData} />
                                 ) : msg.contentType === 'cheatsheet' && msg.contentData ? (
                                     <CheatSheetView data={msg.contentData} />
+                                ) : msg.contentType === 'question-paper' && msg.contentData ? (
+                                    <QuestionPaperView data={msg.contentData} />
                                 ) : msg.contentType === 'note-correction' && msg.contentData ? (
                                     <NoteGraderView data={msg.contentData} />
                                 ) : msg.role === 'user' ? (

@@ -72,8 +72,21 @@ const generateDiagramTool: FunctionDeclaration = {
   }
 };
 
+const createQuestionPaperTool: FunctionDeclaration = {
+  name: "create_question_paper",
+  description: "Generate a formal exam question paper for a topic with specific total marks.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING, description: "The topic(s) for the exam." },
+      totalMarks: { type: Type.INTEGER, description: "Total marks for the paper (e.g. 10, 20, 50, 80)." }
+    },
+    required: ["topic", "totalMarks"]
+  }
+};
+
 const appTools: Tool[] = [{
-  functionDeclarations: [createQuizTool, createFlashcardsTool, createPracticeTool, createCheatSheetTool, generateDiagramTool]
+  functionDeclarations: [createQuizTool, createFlashcardsTool, createPracticeTool, createCheatSheetTool, generateDiagramTool, createQuestionPaperTool]
 }];
 
 // --- Main Chat Function ---
@@ -165,6 +178,11 @@ export const sendMessageToLearnBro = async (
                 const concept = (call.args as any).concept;
                 const data = await generateDiagram(concept);
                 if (data) onToolAction('image', data.image);
+             } else if (call.name === "create_question_paper" && onToolAction) {
+                const topic = (call.args as any).topic;
+                const totalMarks = (call.args as any).totalMarks || 20;
+                const data = await generateQuestionPaper(topic, totalMarks);
+                onToolAction('question-paper', data);
              }
          }
       }
@@ -275,6 +293,64 @@ export const generateStudyMaterial = async (
     } catch (error) {
         console.error("Error generating study material:", error);
         return type === 'cheatsheet' ? {} : [];
+    }
+};
+
+export const generateQuestionPaper = async (topic: string, totalMarks: number): Promise<any> => {
+    try {
+        const prompt = `Generate a formal exam question paper for "${topic}" with exactly ${totalMarks} total marks. 
+        Create sections (e.g., Section A: 1 mark questions, Section B: 5 mark questions, etc.) so that the sum of marks is exactly ${totalMarks}.
+        Include a title, estimated duration (based on marks), and 2-3 standard exam instructions.`;
+
+        const schema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                totalMarks: { type: Type.INTEGER },
+                durationMinutes: { type: Type.INTEGER },
+                instructions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                sections: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING, description: "e.g. 'Section A (Short Answer) - 2 Marks each'" },
+                            questions: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        id: { type: Type.INTEGER },
+                                        text: { type: Type.STRING },
+                                        marks: { type: Type.INTEGER }
+                                    },
+                                    required: ["id", "text", "marks"]
+                                }
+                            }
+                        },
+                        required: ["name", "questions"]
+                    }
+                }
+            },
+            required: ["title", "totalMarks", "durationMinutes", "instructions", "sections"]
+        };
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+                temperature: 0.4
+            }
+        });
+
+        const text = response.text?.replace(/```json/g, '').replace(/```/g, '').trim() || "{}";
+        return JSON.parse(text);
+
+    } catch (error) {
+        console.error("Error generating question paper:", error);
+        return null;
     }
 };
 

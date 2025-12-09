@@ -2,7 +2,7 @@ import React from 'react';
 
 export type Role = 'user' | 'model';
 
-export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction' | 'cheatsheet';
+export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction' | 'cheatsheet' | 'question-paper';
 
 export interface ChatMessage {
   id: string;
@@ -59,4 +59,19 @@ export interface MasteryItem {
   topic: string;
   level: number; // 0-100
   status: 'danger' | 'warning' | 'mastered';
+}
+
+export interface QuestionPaperData {
+  title: string;
+  totalMarks: number;
+  durationMinutes: number;
+  instructions: string[];
+  sections: {
+    name: string;
+    questions: {
+      id: number;
+      text: string;
+      marks: number;
+    }[];
+  }[];
 }
