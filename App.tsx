@@ -3,7 +3,8 @@ import {
   Menu, X, Sparkles, BrainCircuit, Zap,
   Settings, Image as ImageIcon, Rocket, Headphones, Mic, Share2, Search,
   Smile, User, GraduationCap, Flame, Heart, AlertTriangle, Brain, History,
-  ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool, FileQuestion
+  ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool, FileQuestion,
+  Activity, Command, Cpu
 } from 'lucide-react';
 import { TeachingMode, ChatMessage, MasteryItem, LearningEvent } from './types';
 import { sendMessageToLearnBro, gradeAndFixNotes } from './services/geminiService';
@@ -19,24 +20,24 @@ import { CreateNotesModal } from './components/CreateNotesModal';
 // --- Configuration & Data ---
 
 const PERSONAS = [
-  { id: TeachingMode.DEFAULT, icon: <User size={20} />, color: "text-cyan-400", bg: "bg-cyan-500", label: "Bro Mode", desc: "Best Friend" },
-  { id: TeachingMode.CHILD, icon: <Smile size={20} />, color: "text-amber-400", bg: "bg-amber-500", label: "Child Mode", desc: "ELI5" },
-  { id: TeachingMode.FUN, icon: <Sparkles size={20} />, color: "text-pink-400", bg: "bg-pink-500", label: "Fun Mode", desc: "Comedian" },
-  { id: TeachingMode.STRICT_MOM, icon: <AlertTriangle size={20} />, color: "text-rose-500", bg: "bg-rose-600", label: "Strict Mom", desc: "Discipline" },
-  { id: TeachingMode.SENIOR, icon: <GraduationCap size={20} />, color: "text-emerald-400", bg: "bg-emerald-500", label: "Senior", desc: "Mentor" },
-  { id: TeachingMode.LATE_NIGHT, icon: <Heart size={20} />, color: "text-violet-400", bg: "bg-violet-500", label: "Therapy", desc: "2AM Talks" },
-  { id: TeachingMode.DEEP_THINK, icon: <Brain size={20} />, color: "text-indigo-400", bg: "bg-indigo-500", label: "Deep Think", desc: "Reasoning" },
+  { id: TeachingMode.DEFAULT, icon: <User size={20} />, color: "text-cyan-400", bg: "bg-cyan-500", glow: "shadow-cyan-500/50", label: "Bro Mode", desc: "Best Friend" },
+  { id: TeachingMode.CHILD, icon: <Smile size={20} />, color: "text-amber-400", bg: "bg-amber-500", glow: "shadow-amber-500/50", label: "Child Mode", desc: "ELI5" },
+  { id: TeachingMode.FUN, icon: <Sparkles size={20} />, color: "text-pink-400", bg: "bg-pink-500", glow: "shadow-pink-500/50", label: "Fun Mode", desc: "Comedian" },
+  { id: TeachingMode.STRICT_MOM, icon: <AlertTriangle size={20} />, color: "text-rose-500", bg: "bg-rose-600", glow: "shadow-rose-500/50", label: "Strict Mom", desc: "Discipline" },
+  { id: TeachingMode.SENIOR, icon: <GraduationCap size={20} />, color: "text-emerald-400", bg: "bg-emerald-500", glow: "shadow-emerald-500/50", label: "Senior", desc: "Mentor" },
+  { id: TeachingMode.LATE_NIGHT, icon: <Heart size={20} />, color: "text-violet-400", bg: "bg-violet-500", glow: "shadow-violet-500/50", label: "Therapy", desc: "2AM Talks" },
+  { id: TeachingMode.DEEP_THINK, icon: <Brain size={20} />, color: "text-indigo-400", bg: "bg-indigo-500", glow: "shadow-indigo-500/50", label: "Deep Think", desc: "Reasoning" },
 ];
 
 const TOOLS = [
-  { id: 'timeline', label: 'Timeline', icon: <History size={18} />, desc: 'History', action: 'timeline', color: 'text-slate-400 group-hover:text-indigo-400', bg: 'group-hover:bg-indigo-500/20' },
-  { id: 'create-notes', label: 'Create Notes', icon: <PenTool size={18} />, desc: 'Editor', action: 'create-notes', color: 'text-slate-400 group-hover:text-pink-400', bg: 'group-hover:bg-pink-500/20' },
-  { id: 'quiz', label: 'Create Quiz', icon: <HelpCircle size={18} />, desc: 'Test Prep', prompt: "Create a multiple choice quiz about ", color: 'text-slate-400 group-hover:text-emerald-400', bg: 'group-hover:bg-emerald-500/20' },
-  { id: 'question-paper', label: 'Question Paper', icon: <FileQuestion size={18} />, desc: 'Exam Gen', prompt: "Create a question paper on ", color: 'text-slate-400 group-hover:text-orange-400', bg: 'group-hover:bg-orange-500/20' },
-  { id: 'flashcards', label: 'Flashcards', icon: <RotateCw size={18} />, desc: 'Memorize', prompt: "Create flashcards for ", color: 'text-slate-400 group-hover:text-amber-400', bg: 'group-hover:bg-amber-500/20' },
-  { id: 'notes', label: 'Cheat Sheet', icon: <FileText size={18} />, desc: 'Summaries', prompt: "Create a cheat sheet for ", color: 'text-slate-400 group-hover:text-purple-400', bg: 'group-hover:bg-purple-500/20' },
-  { id: 'diagram', label: 'Diagrams', icon: <ImageIcon size={18} />, desc: 'Visuals', prompt: "Generate a diagram explaining ", color: 'text-slate-400 group-hover:text-cyan-400', bg: 'group-hover:bg-cyan-500/20' },
-  { id: 'grader', label: 'Check Notes', icon: <Highlighter size={18} />, desc: 'Grader', prompt: "Grade these notes: ", color: 'text-slate-400 group-hover:text-rose-400', bg: 'group-hover:bg-rose-500/20' },
+  { id: 'timeline', label: 'Timeline', icon: <History size={20} />, desc: 'History', action: 'timeline', color: 'text-indigo-400', bg: 'hover:bg-indigo-500/10 hover:border-indigo-500/30' },
+  { id: 'create-notes', label: 'Editor', icon: <PenTool size={20} />, desc: 'Draft Notes', action: 'create-notes', color: 'text-pink-400', bg: 'hover:bg-pink-500/10 hover:border-pink-500/30' },
+  { id: 'quiz', label: 'Quiz', icon: <HelpCircle size={20} />, desc: 'Test Prep', prompt: "Create a multiple choice quiz about ", color: 'text-emerald-400', bg: 'hover:bg-emerald-500/10 hover:border-emerald-500/30' },
+  { id: 'question-paper', label: 'Exams', icon: <FileQuestion size={20} />, desc: 'Generator', prompt: "Create a question paper on ", color: 'text-orange-400', bg: 'hover:bg-orange-500/10 hover:border-orange-500/30' },
+  { id: 'flashcards', label: 'Cards', icon: <RotateCw size={20} />, desc: 'Memorize', prompt: "Create flashcards for ", color: 'text-amber-400', bg: 'hover:bg-amber-500/10 hover:border-amber-500/30' },
+  { id: 'notes', label: 'Cheatsheet', icon: <FileText size={20} />, desc: 'Summaries', prompt: "Create a cheat sheet for ", color: 'text-purple-400', bg: 'hover:bg-purple-500/10 hover:border-purple-500/30' },
+  { id: 'diagram', label: 'Visuals', icon: <ImageIcon size={20} />, desc: 'Diagrams', prompt: "Generate a diagram explaining ", color: 'text-cyan-400', bg: 'hover:bg-cyan-500/10 hover:border-cyan-500/30' },
+  { id: 'grader', label: 'Grader', icon: <Highlighter size={20} />, desc: 'Check Notes', prompt: "Grade these notes: ", color: 'text-rose-400', bg: 'hover:bg-rose-500/10 hover:border-rose-500/30' },
 ];
 
 const MOCK_MASTERY: MasteryItem[] = [
@@ -59,7 +60,7 @@ function App() {
     {
       id: 'welcome',
       role: 'model',
-      text: "Yo. I'm LearnBro. What are we conquering today — grades, skills, or life?",
+      text: "System Online. Welcome to LearningBro AI. Select a mission objective.",
       timestamp: Date.now()
     }
   ]);
@@ -67,8 +68,8 @@ function App() {
   const [inputImage, setInputImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<TeachingMode>(TeachingMode.DEFAULT);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on desktop
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Collapsed by default
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showCreateNotes, setShowCreateNotes] = useState(false);
@@ -100,10 +101,8 @@ function App() {
   };
 
   const handleSmartChip = (prompt: string) => {
-    // If scanning homework, prompt user for image first
     if (prompt.includes("upload an image")) {
         fileInputRef.current?.click();
-        // We'll set the text but wait for user to attach image
         setInputText(prompt);
     } else {
         handleSendMessage(prompt);
@@ -115,19 +114,11 @@ function App() {
           setShowTimeline(true);
       } else if (tool.action === 'create-notes') {
           setShowCreateNotes(true);
-          if (window.innerWidth < 768) {
-              setIsSidebarOpen(false); // Close sidebar on mobile on selection
-          }
       } else if (tool.prompt) {
           setInputText(tool.prompt);
-          // Small timeout to allow render then focus
           setTimeout(() => {
               textareaRef.current?.focus();
           }, 50);
-          
-          if (window.innerWidth < 768) {
-              setIsSidebarOpen(false); // Close sidebar on mobile on selection
-          }
       }
   };
 
@@ -152,7 +143,6 @@ function App() {
 
     try {
       const responseId = (Date.now() + 1).toString();
-      // Optimistically add empty model message
       setMessages(prev => [
         ...prev,
         {
@@ -175,8 +165,6 @@ function App() {
           ));
         },
         (toolType, toolData) => {
-            // Handle Tool Result (Quiz, Flashcards, etc.)
-            // We append a NEW message for the tool component
             const toolMsgId = (Date.now() + 2).toString();
             setMessages(prev => [...prev, {
                 id: toolMsgId,
@@ -203,226 +191,186 @@ function App() {
     }
   };
 
-  const getOrbColor = () => {
-      const persona = PERSONAS.find(p => p.id === currentMode);
-      return persona ? `${persona.color} shadow-${persona.color.split('-')[1]}-500` : 'text-cyan-400 shadow-cyan-500';
-  };
-
   // Get current persona details
   const activePersona = PERSONAS.find(p => p.id === currentMode) || PERSONAS[0];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30">
+    <div className="flex h-screen overflow-hidden bg-[#030712] text-slate-100 font-sans relative selection:bg-cyan-500/30">
       
-      {/* Background Aurora */}
-      <div className="absolute inset-0 z-0 bg-aurora opacity-40 pointer-events-none"></div>
+      {/* --- CYBER BACKGROUND LAYER --- */}
+      <div className="cyber-grid opacity-30 pointer-events-none fixed inset-0 z-0"></div>
+      
+      {/* Dynamic Ambient Glow based on Persona */}
+      <div className={`fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full blur-[120px] opacity-15 pointer-events-none transition-colors duration-1000 ${activePersona.bg}`}></div>
+      <div className={`fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full blur-[100px] opacity-10 pointer-events-none transition-colors duration-1000 ${activePersona.bg}`}></div>
 
-      {/* --- LEFT SIDEBAR (Expanded) --- */}
+      {/* --- LEFT SIDEBAR (Ultra Slim / Expandable) --- */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 h-full glass-panel border-r border-white/5 flex flex-col transition-all duration-300
-        ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:w-20 md:translate-x-0'}
+        fixed inset-y-0 left-0 z-50 h-full flex flex-col transition-all duration-300 border-r border-white/5 bg-black/60 backdrop-blur-xl
+        ${isSidebarOpen ? 'w-64' : 'w-20'}
       `}>
-         {/* Sidebar Header */}
-         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
-             {isSidebarOpen ? (
-                 <div className="flex items-center gap-3 animate-fade-in">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                        <BrainCircuit size={18} className="text-white" />
-                    </div>
-                    <span className="font-display font-bold text-xl tracking-tight">LearnBro</span>
-                 </div>
-             ) : (
-                <div className="w-full flex justify-center">
-                    <BrainCircuit size={24} className="text-cyan-400" />
-                </div>
+         {/* Logo Area */}
+         <div className="h-20 flex items-center justify-center border-b border-white/5 relative">
+             <div className={`
+                w-10 h-10 rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 border border-white/10 flex items-center justify-center shadow-lg
+                ${isSidebarOpen ? 'mr-3' : 'mr-0'} transition-all duration-500
+             `}>
+                 <BrainCircuit size={20} className={`text-white transition-colors duration-500 ${activePersona.color}`} />
+             </div>
+             {isSidebarOpen && (
+                 <span className="font-display font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 animate-fade-in">
+                    LearnBro
+                 </span>
              )}
              
-             {/* Toggle Button */}
+             {/* Toggle */}
              <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="hidden md:flex p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white transition-colors z-50"
              >
-                 <ChevronLeft size={16} className={`transition-transform duration-300 ${!isSidebarOpen && 'rotate-180'}`} />
+                 <ChevronLeft size={12} className={`transition-transform duration-300 ${!isSidebarOpen && 'rotate-180'}`} />
              </button>
          </div>
 
-         {/* Navigation Menu */}
-         <div className="flex-1 overflow-y-auto scrollbar-hide py-6 px-3 flex flex-col gap-6">
+         {/* Mode Selector (Orbs) */}
+         <div className="flex-1 overflow-y-auto scrollbar-hide py-6 flex flex-col gap-4 items-center w-full">
+            {isSidebarOpen && <h3 className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest w-full px-6 mb-2">Neural Link</h3>}
             
-            {/* 1. Teaching Modes */}
-            <div className="flex flex-col gap-2">
-                {isSidebarOpen && <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Teaching Modes</h3>}
-                {PERSONAS.map(persona => (
-                    <button
-                        key={persona.id}
-                        onClick={() => setCurrentMode(persona.id)}
-                        className={`
-                            flex items-center gap-4 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
-                            ${currentMode === persona.id 
-                                ? 'bg-white/10 text-white shadow-lg border border-white/10' 
-                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'}
-                        `}
-                    >
-                        <div className={`
-                            flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all
-                            ${currentMode === persona.id ? persona.bg + ' text-white' : 'bg-slate-800 text-slate-400 group-hover:text-white'}
-                        `}>
-                            {persona.icon}
+            {PERSONAS.map(persona => (
+                <button
+                    key={persona.id}
+                    onClick={() => setCurrentMode(persona.id)}
+                    className={`
+                        relative group flex items-center transition-all duration-300
+                        ${isSidebarOpen ? 'w-full px-4' : 'w-12 justify-center'}
+                    `}
+                >
+                    <div className={`
+                        w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border
+                        ${currentMode === persona.id 
+                            ? `${persona.bg} text-white border-white/20 ${persona.glow} scale-110` 
+                            : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}
+                    `}>
+                        {persona.icon}
+                    </div>
+                    
+                    {isSidebarOpen ? (
+                        <div className="ml-3 text-left animate-fade-in flex-1">
+                            <div className={`text-sm font-bold ${currentMode === persona.id ? 'text-white' : 'text-slate-400'}`}>{persona.label}</div>
+                            <div className="text-[10px] opacity-50 truncate">{persona.desc}</div>
                         </div>
-                        
-                        {isSidebarOpen && (
-                            <div className="text-left animate-fade-in flex-1">
-                                <div className="font-bold text-sm leading-none mb-1">{persona.label}</div>
-                                <div className="text-[10px] opacity-60 font-medium">{persona.desc}</div>
-                            </div>
-                        )}
-
-                        {/* Active Indicator Strip */}
-                        {currentMode === persona.id && (
-                            <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full ${persona.bg}`}></div>
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            {/* 2. Study Tools (Updated) */}
-            <div className="flex flex-col gap-2">
-                {isSidebarOpen && <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Study Tools</h3>}
-                
-                {TOOLS.map(tool => (
-                    <button 
-                        key={tool.id}
-                        onClick={() => handleToolClick(tool)}
-                        className="flex items-center gap-4 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group"
-                    >
-                         <div className={`flex-shrink-0 w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center transition-colors ${tool.bg} ${tool.color}`}>
-                             {tool.icon}
-                         </div>
-                         {isSidebarOpen && (
-                            <div className="text-left animate-fade-in flex-1">
-                                <span className="font-bold text-sm block leading-none mb-1">{tool.label}</span>
-                                <span className="text-[10px] opacity-50 font-medium">{tool.desc}</span>
-                            </div>
-                         )}
-                    </button>
-                ))}
-            </div>
-
+                    ) : (
+                        // Tooltip for collapsed state
+                        <div className="absolute left-14 bg-slate-900 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold text-white opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl backdrop-blur-md">
+                            {persona.label}
+                        </div>
+                    )}
+                </button>
+            ))}
          </div>
 
-         {/* Bottom User Area */}
-         <div className="p-4 border-t border-white/5">
-             <button className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-white/5 transition-colors group">
-                 <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 p-0.5">
-                     <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
-                         <span className="font-bold text-xs">ME</span>
-                     </div>
-                 </div>
-                 {isSidebarOpen && (
-                     <div className="text-left animate-fade-in">
-                         <div className="text-sm font-bold text-white">Student Account</div>
-                         <div className="text-[10px] text-slate-400">Pro Plan Active</div>
-                     </div>
-                 )}
-                 {isSidebarOpen && <Settings size={16} className="ml-auto text-slate-500 group-hover:text-white" />}
+         {/* Quick Actions / Footer */}
+         <div className="p-4 border-t border-white/5 flex flex-col gap-2 items-center">
+             <button className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform hover:shadow-violet-500/30">
+                 <Settings size={18} />
              </button>
          </div>
       </aside>
 
 
-      {/* --- CENTER MAIN (Chat Zone) --- */}
+      {/* --- CENTER STAGE (Main Chat) --- */}
       <main className={`
-          flex-1 flex flex-col h-full relative z-10 min-w-0 transition-all duration-300
-          ${isSidebarOpen ? 'md:ml-0' : 'md:ml-0'} 
+          flex-1 flex flex-col h-full relative z-10 transition-all duration-300
+          ${isSidebarOpen ? 'md:ml-64 ml-0' : 'md:ml-20 ml-0'} 
+          ${isRightPanelOpen ? 'lg:mr-80 mr-0' : 'mr-0'}
       `}>
          
-         {/* Mobile Header Overlay Trigger */}
-         <div className="md:hidden absolute top-4 left-4 z-50">
-             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-800 rounded-lg border border-slate-700 shadow-lg text-white">
-                 {isSidebarOpen ? <X size={20}/> : <Menu size={20}/>}
-             </button>
-         </div>
+         {/* Top Glass Header */}
+         <header className="h-16 flex items-center justify-between px-6 md:px-8 z-20 backdrop-blur-sm border-b border-white/5 sticky top-0">
+            {/* Mobile Sidebar Toggle */}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 text-slate-400">
+                <Menu size={20} />
+            </button>
 
-         {/* Top Bar */}
-         <header className="h-20 flex items-center justify-between px-6 md:px-12 border-b border-white/5 bg-slate-950/50 backdrop-blur-sm z-20">
-            {/* Mode Indicator & Title */}
-            <div className="flex flex-col ml-10 md:ml-0 gap-1">
-                 {/* Current Mode Badge */}
-                 <div className={`
-                    inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md w-fit animate-fade-in
-                 `}>
-                    <div className={`w-2 h-2 rounded-full ${activePersona.bg} shadow-[0_0_8px_currentColor] animate-pulse`}></div>
-                    <span className={`text-xs font-bold uppercase tracking-wide ${activePersona.color}`}>
-                        {activePersona.label}
-                    </span>
-                 </div>
-
-                <h2 className="hidden sm:block text-sm text-slate-400 font-medium tracking-wide">
-                    Physics <span className="text-slate-600 mx-2">•</span> Motion
-                </h2>
-            </div>
-
-            <div className="flex items-center gap-4 md:gap-6">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-full">
-                    <Flame size={16} className="text-amber-500 fill-amber-500 animate-pulse" />
-                    <span className="text-sm font-bold text-amber-500">12</span>
+            <div className="flex items-center gap-4">
+                <div className={`hidden md:flex px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md items-center gap-2 ${activePersona.color}`}>
+                   <Activity size={14} className="animate-pulse" />
+                   <span className="text-xs font-mono font-bold uppercase tracking-wider">{activePersona.label} Active</span>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-full">
-                    <Zap size={16} className="text-indigo-400 fill-indigo-400" />
-                    <span className="text-sm font-bold text-indigo-400">85%</span>
-                </div>
-                <button onClick={() => setIsRightPanelOpen(!isRightPanelOpen)} className="xl:hidden p-2 text-slate-400 hover:text-white">
-                    <BrainCircuit size={24} />
-                </button>
             </div>
+            
+            <button 
+                onClick={() => setIsRightPanelOpen(!isRightPanelOpen)} 
+                className={`p-2 rounded-lg transition-colors ${isRightPanelOpen ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-400 hover:text-white'}`}
+            >
+                <Command size={18} />
+            </button>
          </header>
 
-         {/* Chat Messages Area */}
-         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-12 scrollbar-hide">
-            <div className="max-w-3xl mx-auto space-y-8 pb-32">
-                
+         {/* Chat Area */}
+         <div className="flex-1 overflow-y-auto px-4 md:px-12 py-6 scrollbar-hide relative w-full">
+            <div className="max-w-4xl mx-auto space-y-10 pb-48">
                 {messages.map((msg, index) => (
                     <div 
                         key={msg.id} 
-                        className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-slide-up`}
+                        className={`flex flex-col gap-3 ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-slide-up`}
                         style={{ animationDelay: `${index * 0.05}s` }}
                     >
-                        {/* AI Avatar Orb for Model messages */}
-                        {msg.role === 'model' && (
-                            <div className={`mb-1 relative`}>
-                                <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center bg-slate-900 shadow-[0_0_15px_currentColor] ${getOrbColor()} animate-orb`}>
-                                    <BrainCircuit size={16} />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className={`
-                            max-w-[95%] md:max-w-[85%] rounded-3xl p-5 md:p-6 relative overflow-hidden shadow-2xl
-                            ${msg.role === 'user' 
-                                ? 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white rounded-tr-sm' 
-                                : 'glass-panel text-slate-200 rounded-tl-sm border border-white/5'}
-                        `}>
-                            {msg.image && (
-                                <img src={msg.image} alt="Uploaded" className="max-h-60 rounded-xl mb-4 border border-white/10" />
-                            )}
+                        <div className={`flex items-end gap-4 max-w-[95%] md:max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                             
-                            <div className="relative z-10">
-                                {msg.contentType === 'quiz' && msg.contentData ? (
-                                    <QuizView data={msg.contentData} />
-                                ) : msg.contentType === 'flashcards' && msg.contentData ? (
-                                    <FlashcardView data={msg.contentData} />
-                                ) : msg.contentType === 'practice' && msg.contentData ? (
-                                    <PracticeProblemsView data={msg.contentData} />
-                                ) : msg.contentType === 'cheatsheet' && msg.contentData ? (
-                                    <CheatSheetView data={msg.contentData} />
-                                ) : msg.contentType === 'question-paper' && msg.contentData ? (
-                                    <QuestionPaperView data={msg.contentData} />
-                                ) : msg.contentType === 'note-correction' && msg.contentData ? (
-                                    <NoteGraderView data={msg.contentData} />
-                                ) : msg.role === 'user' ? (
-                                    <p className="text-lg leading-relaxed font-medium">{msg.text}</p>
-                                ) : (
-                                    <MarkdownRenderer content={msg.text} />
+                            {/* Avatar */}
+                            <div className={`
+                                w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-white/10 shadow-lg
+                                ${msg.role === 'model' 
+                                    ? `bg-slate-900 ${activePersona.color} ${activePersona.glow}` 
+                                    : 'bg-white text-slate-900'}
+                            `}>
+                                {msg.role === 'model' ? <BrainCircuit size={16} /> : <User size={16} />}
+                            </div>
+
+                            {/* Bubble */}
+                            <div className={`
+                                p-5 md:p-6 rounded-2xl border backdrop-blur-md shadow-2xl relative overflow-hidden group w-full
+                                ${msg.role === 'user' 
+                                    ? 'bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400/30 text-white rounded-tr-sm' 
+                                    : 'glass-panel text-slate-200 rounded-tl-sm border-white/10 hover:border-white/20'}
+                            `}>
+                                {/* Image Attachment */}
+                                {msg.image && (
+                                    <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
+                                        <img src={msg.image} alt="Upload" className="w-full h-auto" />
+                                    </div>
+                                )}
+                                
+                                {/* Content */}
+                                <div className="relative z-10 text-base md:text-lg leading-relaxed font-light">
+                                    {msg.contentType === 'quiz' && msg.contentData ? (
+                                        <QuizView data={msg.contentData} />
+                                    ) : msg.contentType === 'flashcards' && msg.contentData ? (
+                                        <FlashcardView data={msg.contentData} />
+                                    ) : msg.contentType === 'practice' && msg.contentData ? (
+                                        <PracticeProblemsView data={msg.contentData} />
+                                    ) : msg.contentType === 'cheatsheet' && msg.contentData ? (
+                                        <CheatSheetView data={msg.contentData} />
+                                    ) : msg.contentType === 'question-paper' && msg.contentData ? (
+                                        <QuestionPaperView data={msg.contentData} />
+                                    ) : msg.contentType === 'note-correction' && msg.contentData ? (
+                                        <NoteGraderView data={msg.contentData} />
+                                    ) : msg.role === 'user' ? (
+                                        <p>{msg.text}</p>
+                                    ) : (
+                                        <MarkdownRenderer content={msg.text} />
+                                    )}
+                                </div>
+
+                                {/* Tech Decorations for AI Msg */}
+                                {msg.role === 'model' && (
+                                    <>
+                                        <div className="absolute top-0 right-0 p-2 opacity-10">
+                                            <Cpu size={24} />
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -431,8 +379,8 @@ function App() {
 
                 {isLoading && (
                     <div className="flex items-start gap-4 animate-fade-in">
-                         <div className={`w-8 h-8 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center shadow-[0_0_15px_currentColor] ${getOrbColor()} animate-orb`}>
-                            <BrainCircuit size={16} />
+                         <div className={`w-8 h-8 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center ${activePersona.glow} ${activePersona.color}`}>
+                            <BrainCircuit size={16} className="animate-spin-slow" />
                         </div>
                         <div className="glass-panel px-6 py-4 rounded-3xl rounded-tl-sm flex items-center gap-2">
                              <div className="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
@@ -445,33 +393,32 @@ function App() {
             </div>
          </div>
 
-         {/* Input Zone */}
-         <div className="absolute bottom-6 left-0 right-0 z-30 px-4 md:px-0 pointer-events-none">
+         {/* --- COMMAND CENTER (Input) --- */}
+         <div className="absolute bottom-6 left-0 right-0 z-30 px-4 md:px-6 pointer-events-none">
              <div className="max-w-3xl mx-auto flex flex-col gap-4 pointer-events-auto">
                  
                  {/* Smart Chips */}
                  <SmartChips onSelect={handleSmartChip} />
 
-                 {/* Floating Glass Input */}
-                 <div className="glass-panel rounded-[2rem] p-2 pl-6 flex items-end gap-3 shadow-[0_0_40px_rgba(0,0,0,0.3)] border border-white/10 relative overflow-hidden group bg-slate-900/80 backdrop-blur-xl">
+                 {/* The Input Capsule */}
+                 <div className="glass-panel rounded-[24px] p-2 pl-4 flex items-end gap-2 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-visible group bg-[#0a0a0f]/80 backdrop-blur-2xl transition-all duration-300 focus-within:border-cyan-500/30 focus-within:shadow-[0_0_40px_-10px_rgba(6,182,212,0.15)] ring-1 ring-white/5">
                      
-                     {/* Input Glow */}
-                     <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
-
+                     {/* Preview Image */}
                      {inputImage && (
-                        <div className="absolute -top-32 left-4 p-2 bg-slate-900 rounded-xl border border-slate-700 animate-slide-up shadow-xl">
-                             <img src={inputImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
-                             <button onClick={() => setInputImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full"><X size={12}/></button>
+                        <div className="absolute -top-24 left-0 p-2 glass-panel rounded-xl animate-slide-up border border-white/10 shadow-xl">
+                             <img src={inputImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
+                             <button onClick={() => setInputImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full hover:scale-110 transition-transform shadow-lg"><X size={10}/></button>
                         </div>
                      )}
 
-                     <div className="flex items-center gap-2 mb-2">
-                         <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-cyan-400 transition-colors p-2 rounded-full hover:bg-white/5">
+                     <div className="flex items-center gap-1 mb-1.5">
+                         <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 p-2.5 rounded-xl transition-all">
                              <ImageIcon size={20} />
                              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                          </button>
-                         <button onClick={() => setIsLiveMode(true)} className="text-slate-400 hover:text-rose-400 transition-colors p-2 rounded-full hover:bg-white/5">
+                         <button onClick={() => setIsLiveMode(true)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 p-2.5 rounded-xl transition-all relative">
                              <Headphones size={20} />
+                             <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
                          </button>
                      </div>
 
@@ -480,8 +427,8 @@ function App() {
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={inputImage ? "Ask about this image..." : "Ask LearnBro anything..."}
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 resize-none max-h-32 min-h-[44px] py-3 text-lg font-medium scrollbar-hide"
+                        placeholder={inputImage ? "Analyze this image..." : "Initiate learning sequence..."}
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 resize-none max-h-32 min-h-[50px] py-3.5 text-lg font-medium scrollbar-hide font-display tracking-wide"
                         rows={1}
                      />
 
@@ -489,10 +436,10 @@ function App() {
                         onClick={() => handleSendMessage()}
                         disabled={(!inputText.trim() && !inputImage) || isLoading}
                         className={`
-                            h-12 w-12 rounded-full flex items-center justify-center mb-1 transition-all duration-300
+                            h-12 w-12 rounded-xl flex items-center justify-center mb-0.5 transition-all duration-300
                             ${(!inputText.trim() && !inputImage) || isLoading
-                                ? 'bg-slate-800 text-slate-600' 
-                                : 'bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 hover:scale-110 active:scale-95'
+                                ? 'bg-white/5 text-slate-600 cursor-not-allowed' 
+                                : `bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg hover:scale-105 hover:shadow-cyan-500/30`
                             }
                         `}
                      >
@@ -500,31 +447,59 @@ function App() {
                      </button>
                  </div>
                  
-                 <p className="text-center text-[10px] text-slate-600 font-medium tracking-wide">
-                    AI can make mistakes. Verify important info.
-                 </p>
+                 <div className="flex justify-center gap-4 text-[10px] text-slate-500 font-mono uppercase tracking-widest opacity-60">
+                    <span>AI Model: Gemini 2.5 Flash</span>
+                    <span className="opacity-50">•</span>
+                    <span>Latency: &lt;50ms</span>
+                 </div>
              </div>
          </div>
       </main>
 
-      {/* --- RIGHT PANEL (Brain Dashboard) --- */}
+      {/* --- RIGHT PANEL (Tools & HUD) --- */}
       <aside className={`
-         fixed inset-y-0 right-0 z-40 w-80 glass-panel border-l border-white/5 transition-transform duration-300
-         xl:relative xl:translate-x-0
-         ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}
+         fixed inset-y-0 right-0 z-40 h-full bg-black/60 backdrop-blur-xl border-l border-white/5 transition-transform duration-300 flex flex-col
+         ${isRightPanelOpen ? 'w-80 translate-x-0' : 'w-80 translate-x-full'}
       `}>
-          <div className="h-full flex flex-col">
-              <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                  <span className="font-display font-bold text-lg">Brain Stats</span>
-                  <button onClick={() => setIsRightPanelOpen(false)} className="xl:hidden p-1 text-slate-400"><X size={20}/></button>
+          <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div>
+                  <h2 className="font-display font-bold text-lg tracking-wide text-white">Neural Dashboard</h2>
+                  <p className="text-xs text-slate-500 font-mono mt-1">System Optimal</p>
               </div>
-              <div className="flex-1 overflow-hidden">
-                  <BrainDashboard 
-                      masteryData={MOCK_MASTERY}
-                      streak={12}
-                      brainEnergy={85}
-                  />
+              <button onClick={() => setIsRightPanelOpen(false)} className="lg:hidden p-1 text-slate-400"><X size={20}/></button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
+              
+              {/* Brain HUD */}
+              <BrainDashboard 
+                  masteryData={MOCK_MASTERY}
+                  streak={12}
+                  brainEnergy={85}
+              />
+
+              {/* Tools Grid */}
+              <div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-2">Active Modules</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                      {TOOLS.map(tool => (
+                          <button
+                             key={tool.id}
+                             onClick={() => handleToolClick(tool)}
+                             className={`
+                                flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/5 transition-all duration-300 group
+                                ${tool.bg}
+                             `}
+                          >
+                              <div className={`mb-2 ${tool.color} group-hover:scale-110 transition-transform duration-300`}>
+                                  {tool.icon}
+                              </div>
+                              <span className="text-xs font-bold text-slate-300 group-hover:text-white">{tool.label}</span>
+                          </button>
+                      ))}
+                  </div>
               </div>
+
           </div>
       </aside>
       

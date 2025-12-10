@@ -6,24 +6,32 @@ interface SmartChipsProps {
 }
 
 const CHIPS = [
-  { label: "Scan Homework", prompt: "Can you help me solve this homework problem? I'll upload an image.", icon: <Sparkles size={12} className="text-cyan-400" /> },
-  { label: "Create Cheat Sheet", prompt: "Generate a high-yield cheat sheet for this topic. Include summaries and formulas.", icon: <FileText size={12} className="text-purple-400" /> },
-  { label: "Rescue Plan (20m)", prompt: "I have 20 minutes. Create a high-impact rescue study plan for me right now.", icon: <Zap size={12} className="text-amber-400" /> },
-  { label: "Explain Like I'm 5", prompt: "Explain this concept to me like I am 5 years old. Use simple words.", icon: <BookOpen size={12} className="text-emerald-400" /> },
-  { label: "Test Me Brutally", prompt: "Grill me on this topic. Be harsh. Find my weak spots.", icon: <ShieldAlert size={12} className="text-rose-400" /> },
+  { label: "Scan Homework", prompt: "Can you help me solve this homework problem? I'll upload an image.", icon: <Sparkles size={14} className="text-cyan-400" />, border: "hover:border-cyan-500/50", bg: "hover:bg-cyan-500/10", shadow: "hover:shadow-cyan-500/20" },
+  { label: "Create Cheat Sheet", prompt: "Generate a high-yield cheat sheet for this topic. Include summaries and formulas.", icon: <FileText size={14} className="text-purple-400" />, border: "hover:border-purple-500/50", bg: "hover:bg-purple-500/10", shadow: "hover:shadow-purple-500/20" },
+  { label: "Rescue Plan (20m)", prompt: "I have 20 minutes. Create a high-impact rescue study plan for me right now.", icon: <Zap size={14} className="text-amber-400" />, border: "hover:border-amber-500/50", bg: "hover:bg-amber-500/10", shadow: "hover:shadow-amber-500/20" },
+  { label: "Explain Like I'm 5", prompt: "Explain this concept to me like I am 5 years old. Use simple words.", icon: <BookOpen size={14} className="text-emerald-400" />, border: "hover:border-emerald-500/50", bg: "hover:bg-emerald-500/10", shadow: "hover:shadow-emerald-500/20" },
+  { label: "Test Me Brutally", prompt: "Grill me on this topic. Be harsh. Find my weak spots.", icon: <ShieldAlert size={14} className="text-rose-400" />, border: "hover:border-rose-500/50", bg: "hover:bg-rose-500/10", shadow: "hover:shadow-rose-500/20" },
 ];
 
 export const SmartChips: React.FC<SmartChipsProps> = ({ onSelect }) => {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mask-fade-sides px-4 md:px-0">
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide mask-fade-sides px-4 md:px-0">
       {CHIPS.map((chip, i) => (
         <button
           key={i}
           onClick={() => onSelect(chip.prompt)}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-800 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-full text-xs font-bold text-slate-300 transition-all hover:scale-105 active:scale-95 group shadow-lg"
+          className={`
+            flex-shrink-0 flex items-center gap-2 px-4 py-2.5 
+            glass-panel rounded-full text-xs font-bold text-slate-300 
+            transition-all duration-300 border border-white/5
+            ${chip.border} ${chip.bg} hover:text-white hover:-translate-y-0.5 hover:shadow-lg ${chip.shadow}
+            group whitespace-nowrap
+          `}
         >
-          {chip.icon}
-          <span className="group-hover:text-white transition-colors">{chip.label}</span>
+          <div className="group-hover:scale-110 transition-transform duration-300">
+            {chip.icon}
+          </div>
+          <span>{chip.label}</span>
         </button>
       ))}
     </div>
