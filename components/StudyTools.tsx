@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
 import { Check, X, RotateCw, ChevronRight, ChevronLeft, BrainCircuit, AlertCircle, HelpCircle, Eye, EyeOff, Trophy, Sparkles, FileText, Bookmark, Lightbulb, CheckCircle2, Shuffle, Plus, Trash2, Printer, Clock, FileQuestion, Layers, Zap } from 'lucide-react';
+import { QuizQuestion } from '../types';
 
 // --- Types ---
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  answer: string;
-}
-
 interface Flashcard {
   front: string;
   back: string;
@@ -58,8 +53,11 @@ const CyberCard: React.FC<{ children: React.ReactNode, className?: string, glowC
 export const QuizView: React.FC<{ data: QuizQuestion[] }> = ({ data }) => {
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [score, setScore] = useState<number | null>(null);
+  const [points, setPoints] = useState<number>(0);
 
   if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+  const totalPossiblePoints = data.reduce((acc, q) => acc + (q.marks || 1), 0);
 
   const handleSelect = (qIndex: number, option: string) => {
     if (score !== null) return;
@@ -68,8 +66,15 @@ export const QuizView: React.FC<{ data: QuizQuestion[] }> = ({ data }) => {
 
   const handleSubmit = () => {
     let newScore = 0;
-    data.forEach((q, idx) => { if (userAnswers[idx] === q.answer) newScore++; });
+    let newPoints = 0;
+    data.forEach((q, idx) => { 
+        if (userAnswers[idx] === q.answer) {
+            newScore++;
+            newPoints += (q.marks || 1);
+        }
+    });
     setScore(newScore);
+    setPoints(newPoints);
   };
 
   return (
@@ -86,7 +91,7 @@ export const QuizView: React.FC<{ data: QuizQuestion[] }> = ({ data }) => {
         </div>
         {score !== null && (
              <div className="px-4 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-bold font-mono text-sm">
-                 SCORE: {Math.round((score/data.length)*100)}%
+                 SCORE: {points} / {totalPossiblePoints}
              </div>
         )}
       </div>
@@ -97,7 +102,12 @@ export const QuizView: React.FC<{ data: QuizQuestion[] }> = ({ data }) => {
           <CyberCard key={idx} className="p-6" glowColor="emerald">
             <div className="flex items-start gap-4 mb-6">
                 <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-sm font-bold font-mono">0{idx + 1}</span>
-                <p className="font-medium text-slate-200 text-lg leading-relaxed">{q.question}</p>
+                <div className="flex-1">
+                    <p className="font-medium text-slate-200 text-lg leading-relaxed">{q.question}</p>
+                    <span className="text-[10px] text-slate-500 font-mono font-bold mt-1 block">
+                        [{q.marks || 1} {q.marks === 1 ? 'MARK' : 'MARKS'}]
+                    </span>
+                </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-0 md:pl-12">

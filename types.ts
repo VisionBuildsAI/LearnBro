@@ -10,6 +10,13 @@ export interface Attachment {
   name?: string;
 }
 
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  answer: string;
+  marks?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: Role;

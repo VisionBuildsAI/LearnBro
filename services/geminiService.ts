@@ -14,11 +14,13 @@ const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 const createQuizTool: FunctionDeclaration = {
   name: "create_quiz",
-  description: "Generate a multiple choice quiz for the user to test their knowledge on a specific topic.",
+  description: "Generate a multiple choice quiz. STRICTLY follow the user's requested number of questions if provided (e.g. '10 questions', '50 questions', '80 questions'). If not specified, default to 5.",
   parameters: {
     type: Type.OBJECT,
     properties: {
-      topic: { type: Type.STRING, description: "The specific topic for the quiz." }
+      topic: { type: Type.STRING, description: "The specific topic for the quiz." },
+      numQuestions: { type: Type.INTEGER, description: "Exact number of questions to generate. If user asks for '80 questions', set this to 80." },
+      marksPerQuestion: { type: Type.INTEGER, description: "Marks assigned to each question (default 1)." }
     },
     required: ["topic"]
   }
@@ -194,8 +196,8 @@ export const sendMessageToLearnBro = async (
              console.log("Tool Triggered:", call.name, call.args);
              
              if (call.name === "create_quiz" && onToolAction) {
-                const topic = (call.args as any).topic;
-                const data = await generateStudyMaterial(topic, 'quiz');
+                const args = call.args as any;
+                const data = await generateStudyMaterial(args.topic, 'quiz', args.numQuestions, args.marksPerQuestion);
                 onToolAction('quiz', data);
              } else if (call.name === "create_flashcards" && onToolAction) {
                 const topic = (call.args as any).topic;
@@ -235,13 +237,16 @@ export const sendMessageToLearnBro = async (
 
 export const generateStudyMaterial = async (
   topic: string,
-  type: 'quiz' | 'flashcards' | 'practice' | 'cheatsheet'
+  type: 'quiz' | 'flashcards' | 'practice' | 'cheatsheet',
+  numQuestions: number = 5,
+  marksPerQuestion: number = 1
 ): Promise<any> => {
     let schema: any;
     let prompt: string;
 
     if (type === 'quiz') {
-      prompt = `Generate a 5-question multiple choice quiz about "${topic}". The options should be an array of 4 strings. The answer should be the exact string of the correct option.`;
+      const count = numQuestions || 5;
+      prompt = `Generate a ${count}-question multiple choice quiz about "${topic}". The options should be an array of 4 strings. The answer should be the exact string of the correct option. Each question is worth ${marksPerQuestion} marks. Ensure you generate exactly ${count} questions.`;
       schema = {
         type: Type.ARRAY,
         items: {
@@ -253,8 +258,9 @@ export const generateStudyMaterial = async (
                 items: { type: Type.STRING }
             },
             answer: { type: Type.STRING },
+            marks: { type: Type.INTEGER }
           },
-          required: ["question", "options", "answer"],
+          required: ["question", "options", "answer", "marks"],
         },
       };
     } else if (type === 'practice') {

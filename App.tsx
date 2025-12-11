@@ -4,7 +4,7 @@ import {
   Settings, Image as ImageIcon, Rocket, Headphones, Mic, Share2, Search,
   Smile, User, GraduationCap, Flame, Heart, AlertTriangle, Brain, History,
   ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool, FileQuestion,
-  Activity, Command, Cpu, Paperclip
+  Activity, Command, Cpu, Paperclip, Download
 } from 'lucide-react';
 import { TeachingMode, ChatMessage, MasteryItem, LearningEvent, Attachment } from './types';
 import { sendMessageToLearnBro, gradeAndFixNotes } from './services/geminiService';
@@ -54,6 +54,8 @@ const MOCK_EVENTS: LearningEvent[] = [
     { id: '3', topic: 'Calculus Derivatives', timestamp: Date.now() - 50000000, type: 'practice', score: 100 },
 ];
 
+declare const html2pdf: any;
+
 function App() {
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -73,6 +75,7 @@ function App() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showCreateNotes, setShowCreateNotes] = useState(false);
+  const [downloadingMsgId, setDownloadingMsgId] = useState<string | null>(null);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -137,6 +140,33 @@ function App() {
               textareaRef.current?.focus();
           }, 50);
       }
+  };
+
+  const handleDownloadPdf = async (msgId: string) => {
+      if (typeof html2pdf === 'undefined') {
+          alert("PDF Generator is initializing. Please try again in a moment.");
+          return;
+      }
+
+      setDownloadingMsgId(msgId);
+      const element = document.getElementById(`msg-content-${msgId}`);
+      
+      if (element) {
+          const opt = {
+              margin: 0.5,
+              filename: `LearnBro_Content_${msgId}.pdf`,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true },
+              jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+          };
+          
+          try {
+              await html2pdf().set(opt).from(element).save();
+          } catch (e) {
+              console.error("PDF download failed", e);
+          }
+      }
+      setDownloadingMsgId(null);
   };
 
   const handleSendMessage = async (textOverride?: string) => {
@@ -352,6 +382,18 @@ function App() {
                                     ? 'bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400/30 text-white rounded-tr-sm' 
                                     : 'glass-panel text-slate-200 rounded-tl-sm border-white/10 hover:border-white/20'}
                             `}>
+                                {/* Download PDF Button (Only for Model messages) */}
+                                {msg.role === 'model' && (
+                                    <button 
+                                        onClick={() => handleDownloadPdf(msg.id)}
+                                        disabled={downloadingMsgId === msg.id}
+                                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-50"
+                                        title="Download as PDF"
+                                    >
+                                        {downloadingMsgId === msg.id ? <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div> : <Download size={14} />}
+                                    </button>
+                                )}
+
                                 {/* Attachment Render */}
                                 {msg.attachment && (
                                     <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
@@ -371,8 +413,8 @@ function App() {
                                     </div>
                                 )}
                                 
-                                {/* Content */}
-                                <div className="relative z-10 text-base md:text-lg leading-relaxed font-light">
+                                {/* Content - Wrapped for PDF Generation */}
+                                <div id={`msg-content-${msg.id}`} className="relative z-10 text-base md:text-lg leading-relaxed font-light">
                                     {msg.contentType === 'quiz' && msg.contentData ? (
                                         <QuizView data={msg.contentData} />
                                     ) : msg.contentType === 'flashcards' && msg.contentData ? (
@@ -402,10 +444,10 @@ function App() {
                                 {/* Tech Decorations for AI Msg */}
                                 {msg.role === 'model' && (
                                     <>
-                                        <div className="absolute top-0 right-0 p-2 opacity-10">
+                                        <div className="absolute top-0 right-0 p-2 opacity-10 pointer-events-none">
                                             <Cpu size={24} />
                                         </div>
-                                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none"></div>
                                     </>
                                 )}
                             </div>
