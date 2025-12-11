@@ -15,7 +15,10 @@ const CHIPS = [
 
 export const SmartChips: React.FC<SmartChipsProps> = ({ onSelect }) => {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide mask-fade-sides px-4 md:px-0">
+    <div 
+        className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-4 md:px-0"
+        style={{ maskImage: 'linear-gradient(to right, transparent, black 10px, black 95%, transparent)' }}
+    >
       {CHIPS.map((chip, i) => (
         <button
           key={i}

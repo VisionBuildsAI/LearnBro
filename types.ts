@@ -4,13 +4,19 @@ export type Role = 'user' | 'model';
 
 export type ContentType = 'text' | 'quiz' | 'flashcards' | 'image' | 'practice' | 'note-correction' | 'cheatsheet' | 'question-paper';
 
+export interface Attachment {
+  mimeType: string;
+  data: string; // Base64
+  name?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: Role;
   text: string;
   contentType?: ContentType;
   contentData?: any; // JSON data for quizzes, flashcards, or cheatsheets
-  image?: string; // Base64 string
+  attachment?: Attachment;
   timestamp: number;
 }
 
@@ -22,11 +28,6 @@ export enum TeachingMode {
   SENIOR = "Senior Mentor",
   LATE_NIGHT = "2AM Therapy",
   DEEP_THINK = "Deep Think"
-}
-
-export interface Attachment {
-  mimeType: string;
-  data: string; // Base64
 }
 
 export interface QuickAction {

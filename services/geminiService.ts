@@ -1,6 +1,6 @@
 import { GoogleGenAI, Content, Part, Type, FunctionDeclaration, Tool } from "@google/genai";
 import { SYSTEM_INSTRUCTION, getModeInstruction } from "../constants";
-import { TeachingMode, ChatMessage, NoteCorrectionData } from "../types";
+import { TeachingMode, ChatMessage, NoteCorrectionData, Attachment } from "../types";
 
 const apiKey = process.env.API_KEY;
 
@@ -94,32 +94,67 @@ const appTools: Tool[] = [{
 export const sendMessageToLearnBro = async (
   history: ChatMessage[],
   currentMessage: string,
-  imageAttachment: string | null,
+  attachment: Attachment | null,
   mode: TeachingMode,
   onStream: (text: string) => void,
   onToolAction?: (type: string, data: any) => void
 ) => {
   try {
     // 1. Prepare history
-    const historyContent: Content[] = history
-      .filter(msg => !msg.contentType || msg.contentType === 'text')
-      .map((msg) => ({
-        role: msg.role,
-        parts: [{ text: msg.text }],
-      }));
-
-    // 2. Prepare Prompt & Image
-    const modePrompt = getModeInstruction(mode);
-    const finalPrompt = `[SYSTEM NOTE: ${modePrompt}]\n\n${currentMessage}`;
-    const parts: Part[] = [{ text: finalPrompt }];
-
-    if (imageAttachment) {
-      const base64Data = imageAttachment.split(",")[1];
-      const mimeType = imageAttachment.split(";")[0].split(":")[1] || "image/jpeg";
-      parts.push({
-        inlineData: { mimeType, data: base64Data },
+    // We remove the last item because it is the 'currentMessage' which we send explicitly in the sendMessage call.
+    // We also map attachments so the model has context of previous files.
+    const historyToUse = history.slice(0, -1);
+    
+    const historyContent: Content[] = historyToUse
+      .filter(msg => !msg.contentType || msg.contentType === 'text' || (msg.role === 'user' && msg.attachment))
+      .map((msg) => {
+        const parts: Part[] = [{ text: msg.text }];
+        
+        if (msg.attachment) {
+            const base64Data = msg.attachment.data.includes(',') 
+              ? msg.attachment.data.split(',')[1] 
+              : msg.attachment.data;
+              
+            parts.push({
+                inlineData: {
+                    mimeType: msg.attachment.mimeType,
+                    data: base64Data
+                }
+            });
+        }
+        
+        return {
+            role: msg.role,
+            parts: parts,
+        };
       });
+
+    // 2. Prepare Prompt & Attachment
+    const modePrompt = getModeInstruction(mode);
+    let finalPrompt = `[SYSTEM NOTE: ${modePrompt}]\n\n${currentMessage}`;
+    
+    const parts: Part[] = [];
+
+    if (attachment) {
+      // Clean base64 string
+      const base64Data = attachment.data.includes(',') 
+        ? attachment.data.split(',')[1] 
+        : attachment.data;
+
+      parts.push({
+        inlineData: { 
+          mimeType: attachment.mimeType, 
+          data: base64Data 
+        },
+      });
+
+      // Inject PDF specific instructions
+      if (attachment.mimeType === 'application/pdf') {
+          finalPrompt = `[DOCUMENT ANALYSIS MODE ACTIVE]\nI have attached a PDF document. Please analyze its structure, sections, and question numbers deeply. I may refer to specific questions by number (e.g. "Solve Q5", "Explain Section B").\n\nUser Request: ${currentMessage}`;
+      }
     }
+
+    parts.push({ text: finalPrompt });
 
     // 3. Initialize Chat
     const isThinkingMode = mode === TeachingMode.DEEP_THINK;
@@ -359,11 +394,19 @@ export const generateDiagram = async (topic: string): Promise<{ image: string, t
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: {
-                parts: [{ text: `Create a clean, educational diagram or illustration explaining: ${topic}. Use simple lines and clear colors suitable for a student learning the topic.` }]
+                parts: [{ 
+                    text: `Create a highly detailed, complex, and accurate educational diagram explaining: ${topic}. 
+                    Requirements:
+                    1. High-tech, infographic style suitable for a dark-themed UI. 
+                    2. Use neon accents (cyan, purple, amber) on dark background if applicable, or clean high-contrast textbook style.
+                    3. Clearly labeled parts with connecting lines.
+                    4. Focus on technical accuracy for difficult concepts.
+                    5. High resolution and sharp details.` 
+                }]
             },
             config: {
                 imageConfig: {
-                    aspectRatio: "4:3"
+                    aspectRatio: "16:9" // Wider for better detail
                 }
             }
         });
@@ -385,7 +428,7 @@ export const generateDiagram = async (topic: string): Promise<{ image: string, t
         if (imageBase64) {
             return {
                 image: `data:image/png;base64,${imageBase64}`,
-                text: text || `Here is a visual aid for ${topic}.`
+                text: text || `Here is a detailed diagram for ${topic}.`
             };
         }
         return null;

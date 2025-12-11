@@ -4,9 +4,9 @@ import {
   Settings, Image as ImageIcon, Rocket, Headphones, Mic, Share2, Search,
   Smile, User, GraduationCap, Flame, Heart, AlertTriangle, Brain, History,
   ChevronLeft, HelpCircle, RotateCw, FileText, Highlighter, PenTool, FileQuestion,
-  Activity, Command, Cpu
+  Activity, Command, Cpu, Paperclip
 } from 'lucide-react';
-import { TeachingMode, ChatMessage, MasteryItem, LearningEvent } from './types';
+import { TeachingMode, ChatMessage, MasteryItem, LearningEvent, Attachment } from './types';
 import { sendMessageToLearnBro, gradeAndFixNotes } from './services/geminiService';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { QuizView, FlashcardView, PracticeProblemsView, CheatSheetView, QuestionPaperView } from './components/StudyTools';
@@ -65,7 +65,7 @@ function App() {
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const [inputImage, setInputImage] = useState<string | null>(null);
+  const [inputAttachment, setInputAttachment] = useState<Attachment | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<TeachingMode>(TeachingMode.DEFAULT);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Collapsed by default
@@ -94,16 +94,33 @@ function App() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setInputImage(reader.result as string);
+        setInputAttachment({
+            mimeType: file.type,
+            data: reader.result as string,
+            name: file.name
+        });
+        
+        // Auto-set prompt if empty
+        if (!inputText) {
+             if (file.type === 'application/pdf') {
+                 setInputText("Uploaded. Please solve all questions, or I will ask for specific ones like 'Q2' or 'Section B'.");
+             } else {
+                 setInputText("Analyze this image.");
+             }
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSmartChip = (prompt: string) => {
-    if (prompt.includes("upload an image")) {
+    if (prompt.includes("upload an image") || prompt.includes("Solve PDF")) {
         fileInputRef.current?.click();
-        setInputText(prompt);
+        if (prompt.includes("Solve PDF")) {
+            setInputText("Solve this paper. Break it down by sections and provide step-by-step solutions for each question.");
+        } else {
+            setInputText(prompt);
+        }
     } else {
         handleSendMessage(prompt);
     }
@@ -124,13 +141,13 @@ function App() {
 
   const handleSendMessage = async (textOverride?: string) => {
     const textToSend = textOverride || inputText;
-    if ((!textToSend.trim() && !inputImage) || isLoading) return;
+    if ((!textToSend.trim() && !inputAttachment) || isLoading) return;
 
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: textToSend,
-      image: inputImage || undefined,
+      attachment: inputAttachment || undefined,
       contentType: 'text',
       timestamp: Date.now()
     };
@@ -138,7 +155,7 @@ function App() {
     const tempMessages = [...messages, newMessage];
     setMessages(tempMessages);
     setInputText('');
-    setInputImage(null);
+    setInputAttachment(null);
     setIsLoading(true);
 
     try {
@@ -157,7 +174,7 @@ function App() {
       await sendMessageToLearnBro(
         tempMessages, 
         newMessage.text,
-        newMessage.image || null,
+        newMessage.attachment || null,
         currentMode,
         (streamedText) => {
           setMessages(prev => prev.map(msg => 
@@ -335,10 +352,22 @@ function App() {
                                     ? 'bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400/30 text-white rounded-tr-sm' 
                                     : 'glass-panel text-slate-200 rounded-tl-sm border-white/10 hover:border-white/20'}
                             `}>
-                                {/* Image Attachment */}
-                                {msg.image && (
+                                {/* Attachment Render */}
+                                {msg.attachment && (
                                     <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
-                                        <img src={msg.image} alt="Upload" className="w-full h-auto" />
+                                        {msg.attachment.mimeType === 'application/pdf' ? (
+                                            <div className="bg-slate-900/50 p-4 flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center border border-red-500/50 text-red-400">
+                                                    <FileText size={24} />
+                                                </div>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <p className="font-bold text-sm truncate">{msg.attachment.name || 'Document.pdf'}</p>
+                                                    <p className="text-xs text-slate-400 font-mono">PDF DOCUMENT</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <img src={msg.attachment.data} alt="Upload" className="w-full h-auto" />
+                                        )}
                                     </div>
                                 )}
                                 
@@ -356,6 +385,13 @@ function App() {
                                         <QuestionPaperView data={msg.contentData} />
                                     ) : msg.contentType === 'note-correction' && msg.contentData ? (
                                         <NoteGraderView data={msg.contentData} />
+                                    ) : msg.contentType === 'image' && msg.contentData ? (
+                                        <div className="rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                                            <img src={msg.contentData} alt="AI Generated Diagram" className="w-full h-auto" />
+                                            <div className="p-2 bg-black/50 text-xs text-center text-slate-400 font-mono">
+                                                AI GENERATED DIAGRAM
+                                            </div>
+                                        </div>
                                     ) : msg.role === 'user' ? (
                                         <p>{msg.text}</p>
                                     ) : (
@@ -397,24 +433,38 @@ function App() {
          <div className="absolute bottom-6 left-0 right-0 z-30 px-4 md:px-6 pointer-events-none">
              <div className="max-w-3xl mx-auto flex flex-col gap-4 pointer-events-auto">
                  
-                 {/* Smart Chips */}
-                 <SmartChips onSelect={handleSmartChip} />
+                 {/* Smart Chips - Updated with PDF Solver */}
+                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-4 md:px-0" style={{ maskImage: 'linear-gradient(to right, transparent, black 10px, black 95%, transparent)' }}>
+                      <button onClick={() => handleSmartChip("Solve PDF Paper")} className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 glass-panel rounded-full text-xs font-bold text-slate-300 transition-all duration-300 border border-white/5 hover:border-red-500/50 hover:bg-red-500/10 hover:text-white hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-500/20 group whitespace-nowrap">
+                          <div className="group-hover:scale-110 transition-transform duration-300"><FileText size={14} className="text-red-400" /></div>
+                          <span>Solve PDF Paper</span>
+                      </button>
+                      <SmartChips onSelect={handleSmartChip} />
+                 </div>
 
                  {/* The Input Capsule */}
                  <div className="glass-panel rounded-[24px] p-2 pl-4 flex items-end gap-2 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-visible group bg-[#0a0a0f]/80 backdrop-blur-2xl transition-all duration-300 focus-within:border-cyan-500/30 focus-within:shadow-[0_0_40px_-10px_rgba(6,182,212,0.15)] ring-1 ring-white/5">
                      
-                     {/* Preview Image */}
-                     {inputImage && (
+                     {/* Preview Attachment */}
+                     {inputAttachment && (
                         <div className="absolute -top-24 left-0 p-2 glass-panel rounded-xl animate-slide-up border border-white/10 shadow-xl">
-                             <img src={inputImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
-                             <button onClick={() => setInputImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full hover:scale-110 transition-transform shadow-lg"><X size={10}/></button>
+                             {inputAttachment.mimeType === 'application/pdf' ? (
+                                <div className="w-16 h-16 bg-red-500/10 rounded-lg flex flex-col items-center justify-center border border-red-500/30">
+                                    <FileText size={24} className="text-red-400"/>
+                                    <span className="text-[8px] mt-1 text-red-200 font-bold">PDF</span>
+                                </div>
+                             ) : (
+                                <img src={inputAttachment.data} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
+                             )}
+                             <button onClick={() => setInputAttachment(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full hover:scale-110 transition-transform shadow-lg"><X size={10}/></button>
                         </div>
                      )}
 
                      <div className="flex items-center gap-1 mb-1.5">
-                         <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 p-2.5 rounded-xl transition-all">
-                             <ImageIcon size={20} />
-                             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                         <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 p-2.5 rounded-xl transition-all group/icon">
+                             <Paperclip size={20} className="group-hover/icon:hidden"/>
+                             <ImageIcon size={20} className="hidden group-hover/icon:block"/>
+                             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
                          </button>
                          <button onClick={() => setIsLiveMode(true)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 p-2.5 rounded-xl transition-all relative">
                              <Headphones size={20} />
@@ -427,23 +477,23 @@ function App() {
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={inputImage ? "Analyze this image..." : "Initiate learning sequence..."}
+                        placeholder={inputAttachment ? (inputAttachment.mimeType === 'application/pdf' ? "Ask about this PDF..." : "Analyze this image...") : "Initiate learning sequence..."}
                         className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-500 resize-none max-h-32 min-h-[50px] py-3.5 text-lg font-medium scrollbar-hide font-display tracking-wide"
                         rows={1}
                      />
 
                      <button 
                         onClick={() => handleSendMessage()}
-                        disabled={(!inputText.trim() && !inputImage) || isLoading}
+                        disabled={(!inputText.trim() && !inputAttachment) || isLoading}
                         className={`
                             h-12 w-12 rounded-xl flex items-center justify-center mb-0.5 transition-all duration-300
-                            ${(!inputText.trim() && !inputImage) || isLoading
+                            ${(!inputText.trim() && !inputAttachment) || isLoading
                                 ? 'bg-white/5 text-slate-600 cursor-not-allowed' 
                                 : `bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg hover:scale-105 hover:shadow-cyan-500/30`
                             }
                         `}
                      >
-                         <Rocket size={20} className={(!inputText.trim() && !inputImage) ? "" : "ml-0.5"} />
+                         <Rocket size={20} className={(!inputText.trim() && !inputAttachment) ? "" : "ml-0.5"} />
                      </button>
                  </div>
                  

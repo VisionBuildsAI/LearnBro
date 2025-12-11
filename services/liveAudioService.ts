@@ -1,9 +1,6 @@
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
-const apiKey = process.env.API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
 // Audio Configuration
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
@@ -37,6 +34,13 @@ export class LiveAudioService {
     try {
       this.notifyStatus("Initializing audio...");
       
+      // Initialize AI Client here to ensure we get the latest API Key
+      const apiKey = process.env.API_KEY || "";
+      if (!apiKey) {
+        throw new Error("API Key not found");
+      }
+      const ai = new GoogleGenAI({ apiKey });
+
       // 1. Setup Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       this.inputAudioContext = new AudioContextClass({ sampleRate: INPUT_SAMPLE_RATE });
@@ -100,7 +104,10 @@ export class LiveAudioService {
           onerror: (err) => {
             console.error("Gemini Live Error:", err);
             this.notifyStatus("Error occurred");
-            this.stop();
+            // Do not immediately stop on all errors, but Network error usually requires restart
+            if (err.message && err.message.includes("Network error")) {
+                this.stop();
+            }
           },
         },
       });
@@ -249,8 +256,6 @@ export class LiveAudioService {
   // --- Helpers ---
 
   private createBlob(data: Float32Array): { data: string, mimeType: string } {
-    // Downsample or process if needed, but here we assume INPUT_SAMPLE_RATE matches
-    // Convert Float32 to Int16
     const l = data.length;
     const int16 = new Int16Array(l);
     for (let i = 0; i < l; i++) {
@@ -258,11 +263,9 @@ export class LiveAudioService {
       int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
     }
     
-    // Convert to binary string manually to avoid stack overflow with spread operator on large arrays
     let binary = '';
     const bytes = new Uint8Array(int16.buffer);
     const len = bytes.byteLength;
-    // Process in chunks if needed, but 4096 samples (8KB) is safe for simple loop
     for (let i = 0; i < len; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
@@ -284,7 +287,6 @@ export class LiveAudioService {
   }
 
   private async decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
-    // Gemini Output is 16-bit PCM, 24kHz, 1 channel
     const inputSampleRate = 24000;
     const numChannels = 1;
     
@@ -294,7 +296,6 @@ export class LiveAudioService {
     
     const channelData = audioBuffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
-      // Normalize Int16 to Float32 [-1.0, 1.0]
       channelData[i] = dataInt16[i] / 32768.0;
     }
     
