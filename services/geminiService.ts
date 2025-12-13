@@ -175,6 +175,18 @@ export const sendMessageToLearnBro = async (
       history: historyContent
     });
 
+    // Determine active attachment for tools (current or last PDF in history)
+    let activeAttachment = attachment;
+    if (!activeAttachment) {
+        // Look backwards in history for a PDF
+        for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].attachment && history[i].attachment.mimeType === 'application/pdf') {
+                activeAttachment = history[i].attachment;
+                break;
+            }
+        }
+    }
+
     // 4. Send Message & Handle Stream
     const result = await chat.sendMessageStream({
         message: parts
@@ -197,19 +209,19 @@ export const sendMessageToLearnBro = async (
              
              if (call.name === "create_quiz" && onToolAction) {
                 const args = call.args as any;
-                const data = await generateStudyMaterial(args.topic, 'quiz', args.numQuestions, args.marksPerQuestion);
+                const data = await generateStudyMaterial(args.topic, 'quiz', args.numQuestions, args.marksPerQuestion, activeAttachment);
                 onToolAction('quiz', data);
              } else if (call.name === "create_flashcards" && onToolAction) {
                 const topic = (call.args as any).topic;
-                const data = await generateStudyMaterial(topic, 'flashcards');
+                const data = await generateStudyMaterial(topic, 'flashcards', 5, 1, activeAttachment);
                 onToolAction('flashcards', data);
              } else if (call.name === "create_practice_problems" && onToolAction) {
                 const topic = (call.args as any).topic;
-                const data = await generateStudyMaterial(topic, 'practice');
+                const data = await generateStudyMaterial(topic, 'practice', 5, 1, activeAttachment);
                 onToolAction('practice', data);
              } else if (call.name === "create_cheat_sheet" && onToolAction) {
                 const topic = (call.args as any).topic;
-                const data = await generateStudyMaterial(topic, 'cheatsheet');
+                const data = await generateStudyMaterial(topic, 'cheatsheet', 5, 1, activeAttachment);
                 onToolAction('cheatsheet', data);
              } else if (call.name === "generate_diagram" && onToolAction) {
                 const concept = (call.args as any).concept;
@@ -239,14 +251,15 @@ export const generateStudyMaterial = async (
   topic: string,
   type: 'quiz' | 'flashcards' | 'practice' | 'cheatsheet',
   numQuestions: number = 5,
-  marksPerQuestion: number = 1
+  marksPerQuestion: number = 1,
+  attachment?: Attachment | null
 ): Promise<any> => {
     let schema: any;
     let prompt: string;
+    let parts: Part[] = [];
 
+    // Define Schema
     if (type === 'quiz') {
-      const count = numQuestions || 5;
-      prompt = `Generate a ${count}-question multiple choice quiz about "${topic}". The options should be an array of 4 strings. The answer should be the exact string of the correct option. Each question is worth ${marksPerQuestion} marks. Ensure you generate exactly ${count} questions.`;
       schema = {
         type: Type.ARRAY,
         items: {
@@ -264,7 +277,6 @@ export const generateStudyMaterial = async (
         },
       };
     } else if (type === 'practice') {
-        prompt = `Generate 3 practice problems for "${topic}" ranging from easy to hard. Include a hint and a step-by-step solution for each.`;
         schema = {
             type: Type.ARRAY,
             items: {
@@ -278,7 +290,6 @@ export const generateStudyMaterial = async (
             }
         };
     } else if (type === 'cheatsheet') {
-        prompt = `Generate a high-yield cheat sheet for "${topic}". Include a summary, key terms, important formulas or dates, and common pitfalls.`;
         schema = {
             type: Type.OBJECT,
             properties: {
@@ -303,7 +314,6 @@ export const generateStudyMaterial = async (
             required: ["title", "summary", "sections"]
         };
     } else {
-      prompt = `Generate 5 study flashcards for "${topic}". Front is the term/concept, Back is the definition/explanation.`;
       schema = {
         type: Type.ARRAY,
         items: {
@@ -317,10 +327,48 @@ export const generateStudyMaterial = async (
       };
     }
 
+    // Build Prompt
+    if (attachment) {
+        // Handle Attachment
+        const base64Data = attachment.data.includes(',') ? attachment.data.split(',')[1] : attachment.data;
+        parts.push({
+            inlineData: {
+                mimeType: attachment.mimeType,
+                data: base64Data
+            }
+        });
+
+        // PDF Context Prompts
+        if (type === 'quiz') {
+            const count = numQuestions || 5;
+            prompt = `[DOCUMENT CONTEXT ACTIVE]\nAnalyze the attached document. Generate a ${count}-question multiple choice quiz based strictly on its content. The options should be an array of 4 strings. The answer should be the exact string of the correct option. Each question is worth ${marksPerQuestion} marks. Ensure you generate exactly ${count} questions. Focus mainly on: "${topic}".`;
+        } else if (type === 'practice') {
+            prompt = `[DOCUMENT CONTEXT ACTIVE]\nAnalyze the attached document. Generate 3 practice problems based on its content. Focus on: "${topic}". Include a hint and a step-by-step solution for each.`;
+        } else if (type === 'cheatsheet') {
+            prompt = `[DOCUMENT CONTEXT ACTIVE]\nAnalyze the attached document. Generate a high-yield cheat sheet summary of its content. Focus on: "${topic}". Include key terms, formulas, and important points found in the doc.`;
+        } else {
+            prompt = `[DOCUMENT CONTEXT ACTIVE]\nAnalyze the attached document. Generate 5 study flashcards based on its content. Focus on: "${topic}". Front is term/question, Back is definition/answer.`;
+        }
+    } else {
+        // Text Only Prompts
+        if (type === 'quiz') {
+            const count = numQuestions || 5;
+            prompt = `Generate a ${count}-question multiple choice quiz about "${topic}". The options should be an array of 4 strings. The answer should be the exact string of the correct option. Each question is worth ${marksPerQuestion} marks. Ensure you generate exactly ${count} questions.`;
+        } else if (type === 'practice') {
+            prompt = `Generate 3 practice problems for "${topic}" ranging from easy to hard. Include a hint and a step-by-step solution for each.`;
+        } else if (type === 'cheatsheet') {
+            prompt = `Generate a high-yield cheat sheet for "${topic}". Include a summary, key terms, important formulas or dates, and common pitfalls.`;
+        } else {
+            prompt = `Generate 5 study flashcards for "${topic}". Front is the term/concept, Back is the definition/explanation.`;
+        }
+    }
+
+    parts.push({ text: prompt });
+
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: prompt,
+            contents: { parts },
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
